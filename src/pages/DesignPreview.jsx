@@ -3,40 +3,49 @@ import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { renderDraftFrame } from '../frames/DraftFrame'
 
-// Import Zodiac Images
-import aires from '../images/Aires.png'
-import taurus from '../images/Taurus.png'
-import gemini from '../images/Gemini.png'
-import cancer from '../images/Cancer.png'
-import leo from '../images/Leo.png'
-import virgo from '../images/Virgo.png'
-import libra from '../images/Libra.png'
+
 // Assuming Virgo-1 might be Scorpio or a placeholder, using it to fill the gap
 // If Scorpio is missing, we might need to duplicate or use a placeholder
-import virgo1 from '../images/Virgo-1.png'
-import sagittarius from '../images/Sagittarius.png'
-import capricorn from '../images/Capricorn.png'
-import aquarius from '../images/Aquarius.png'
-import pisces from '../images/Pisces.png'
 
-const zodiacSources = [
-    aires, taurus, gemini, cancer, leo, virgo,
-    libra, virgo1, sagittarius, capricorn, aquarius, pisces
-]
+import heart from '../images/heart.png'
+import trophy from '../images/trophy.png'
+import moneyBag from '../images/money-bag.png'
+import crystalBall from '../images/crystal-ball.png'
+import leo from '../images/Leo.png'
+
+const decorativeSources = [heart, trophy, moneyBag, crystalBall]
+const zodiacSource = leo
 
 const DesignPreview = () => {
     const canvasRef = useRef(null)
     const [imagesLoaded, setImagesLoaded] = useState(false)
     const imagesRef = useRef([])
+    const zodiacIconRef = useRef(null)
+    const [zodiacData, setZodiacData] = useState(null)
     const timelineRef = useRef(null)
 
-    // Load Images
+    // Fetch dynamic data
     useEffect(() => {
-        let loadedCount = 0
-        const totalImages = zodiacSources.length
-        const loadedImages = new Array(totalImages)
+        fetch('/data.json')
+            .then(res => res.json())
+            .then(data => {
+                if (data.zodiacs && data.zodiacs.length > 0) {
+                    setZodiacData(data.zodiacs[0]) // Using the first zodiac for preview
+                }
+            })
+            .catch(err => console.error("Error fetching data.json:", err))
+    }, [])
 
-        zodiacSources.forEach((src, index) => {
+    // Load Decorative Images and Zodiac Icon
+    useEffect(() => {
+        if (!zodiacData) return
+
+        let loadedCount = 0
+        const totalImages = decorativeSources.length + 1 // +1 for zodiac icon
+        const loadedImages = new Array(decorativeSources.length)
+
+        // Load decorative images
+        decorativeSources.forEach((src, index) => {
             const img = new Image()
             img.src = src
             img.onload = () => {
@@ -48,11 +57,24 @@ const DesignPreview = () => {
                 }
             }
         })
-    }, [])
+
+        // Load zodiac icon
+        // We'll use Leo for now, or match it to the JSON if possible
+        const zodiacImg = new Image()
+        zodiacImg.src = zodiacSource
+        zodiacImg.onload = () => {
+            zodiacIconRef.current = zodiacImg
+            loadedCount++
+            if (loadedCount === totalImages) {
+                imagesRef.current = loadedImages
+                setImagesLoaded(true)
+            }
+        }
+    }, [zodiacData])
 
     // Animation Logic
     useEffect(() => {
-        if (!imagesLoaded) return
+        if (!imagesLoaded || !zodiacData) return
 
         const canvas = canvasRef.current
         if (!canvas) return
@@ -60,152 +82,165 @@ const DesignPreview = () => {
         canvas.width = 1080
         canvas.height = 1920
 
-        // Helper for Date Format (e.g., "2nd Feb. 2026")
-        const formatDate = (date) => {
-            const d = date.getDate()
-            const m = date.toLocaleString('default', { month: 'short' })
-            const y = date.getFullYear()
-            const suffix = (d) => {
-                if (d > 3 && d < 21) return 'th'
-                switch (d % 10) {
-                    case 1: return "st"
-                    case 2: return "nd"
-                    case 3: return "rd"
-                    default: return "th"
-                }
-            }
-            return `${d}${suffix(d)} ${m} ${y}`
-        }
-
-        // Animation Object
+        // Animation State
         const animState = {
-            scale: 0,
-            rotation: 0,
-            opacity: 0,
-            showText: false, // STRICT control
-            textFade: 1      // New: Controls fade out of text at the end
+            decoY: 100,      // Start 100px below final position
+            decoOpacity: 0,  // Start invisible
+            // Zodiac animation
+            zodiacX: -300,   // Start off-screen to the left
+            zodiacRotation: -360, // Start rotated backward
+            zodiacOpacity: 0,
+            zodiacName: '',
+            showName: false,
+            // Vibe text animation
+            vibeText: '',
+            showVibe: false,
+            // Love section animation
+            loveLabelOpacity: 0,
+            loveLabelYOffset: 20,
+            loveMaskProgress: 0,
+            showLoveLabel: false,
+            showLoveContent: false
         }
 
         // Create Timeline
         const tl = gsap.timeline({
             repeat: 0,
             onUpdate: () => {
-                const textData = animState.showText ? {
-                    opacity: animState.textFade, // Controlled opacity for fade out
-                    line1: animState.text1,
-                    line2: animState.text2,
-                    line3: animState.text3,
-                    line4: animState.text4,
-                    line5: animState.text5
-                } : null
+                // Clear canvas
+                ctx.fillStyle = '#000000'
+                ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+                const decorativeAnim = {
+                    opacity: animState.decoOpacity,
+                    yOffset: animState.decoY,
+                    images: imagesRef.current
+                }
+
+                const zodiacAnim = {
+                    icon: zodiacIconRef.current,
+                    xOffset: animState.zodiacX,
+                    rotation: animState.zodiacRotation,
+                    opacity: animState.zodiacOpacity,
+                    name: animState.zodiacName,
+                    showName: animState.showName
+                }
+
+                const vibeAnim = {
+                    text: animState.vibeText,
+                    showVibe: animState.showVibe
+                }
+
+                const loveAnim = {
+                    text: zodiacData.love || "",
+                    labelOpacity: animState.loveLabelOpacity,
+                    labelYOffset: animState.loveLabelYOffset,
+                    maskProgress: animState.loveMaskProgress,
+                    showLabel: animState.showLoveLabel,
+                    showContent: animState.showLoveContent
+                }
 
                 renderDraftFrame(ctx, {
-                    scale: animState.scale,
-                    rotation: animState.rotation,
-                    opacity: animState.opacity,
-                    images: imagesRef.current,
-                    highlightedNames: highlighted,
-                    textData: textData
+                    scale: 0,
+                    rotation: 0,
+                    opacity: 0,
+                    images: [],
+                    highlightedNames: [],
+                    textData: null,
+                    decorativeAnim: decorativeAnim,
+                    zodiacAnim: zodiacAnim,
+                    vibeAnim: vibeAnim,
+                    loveAnim: loveAnim
                 })
             }
         })
         timelineRef.current = tl
 
-        // Initial State (Explicit Resets)
-        animState.scale = 0
-        animState.opacity = 0
-        animState.rotation = -60
-        animState.textFade = 1
+        // Initial State
+        tl.set(animState, {
+            decoY: 100,
+            decoOpacity: 0,
+            zodiacX: -300,
+            zodiacRotation: -360,
+            zodiacOpacity: 0,
+            showName: false,
+            showVibe: false
+        })
 
-        // Text Initial State: Empty strings
-        animState.text1 = ''
-        animState.text2 = ''
-        animState.text3 = ''
-        animState.text4 = ''
-        animState.text5 = ''
-
-        // Config
-        const highlighted = ['Leo', 'Taurus', 'Aquarius']
-        const dateStr = formatDate(new Date())
-        const zodiacStr = highlighted.join(', ').toUpperCase()
-
-        // Ensure strictly fresh state on start/restart
-        tl.set(animState, { textFade: 1 })
-
-        // 1. Zodiac Sequence (Scale + Rotate)
-        // 0 -> 3.5s: Zodiacs rotate and settle. Text DOES NOT EXIST.
+        // Phase 1: Decorative Images Fade-Up Animation (0-1.5s)
         tl.to(animState, {
-            scale: 1,
-            opacity: 1,
-            rotation: 120,
-            duration: 3.5,
+            decoY: 0,
+            decoOpacity: 0.4,  // Fade to 40% opacity
+            duration: 1.5,
             ease: "power2.out"
         })
 
-        // 2. Text Layer Reveal
-        // STRICT TIMING: At 3.5s (end of rotation), Text Layer is created INSTANTLY.
+        // Phase 2: Zodiac Icon Slide-In with Rotation and Fade (1.5-3s)
+        tl.to(animState, {
+            zodiacX: 0,
+            zodiacRotation: 0,
+            zodiacOpacity: 1,
+            duration: 1.5,
+            ease: "power2.out"
+        }, "+=0")
 
-        // CRITICAL FIX: Reset text strings immediately before showing layer
-        // This prevents "stale" text from previous plays appearing for 1 frame
-        tl.call(() => {
-            animState.text1 = ''
-            animState.text2 = ''
-            animState.text3 = ''
-            animState.text4 = ''
-            animState.text5 = ''
+        // Phase 3: Zodiac Name Typewriter Reveal
+        const zodiacNameFull = (zodiacData.name || "LEO").toUpperCase()
+
+        // Enable name display
+        tl.set(animState, { showName: true })
+
+        // Typewriter effect
+        const nameCounter = { value: 0 }
+        tl.to(nameCounter, {
+            value: zodiacNameFull.length,
+            duration: zodiacNameFull.length * 0.1, // 0.1s per character
+            ease: "none",
+            onUpdate: () => {
+                const count = Math.ceil(nameCounter.value)
+                animState.zodiacName = zodiacNameFull.substring(0, count)
+            }
+        }, "+=0")
+
+        // Phase 4: Vibe Text Typewriter Reveal
+        const vibeTextFull = "Vibe: " + (zodiacData.vibe || "")
+
+        // Enable vibe display after a short pause
+        tl.set(animState, { showVibe: true }, "+=0.3")
+
+        // Typewriter effect for vibe text
+        const vibeCounter = { value: 0 }
+        tl.to(vibeCounter, {
+            value: vibeTextFull.length,
+            duration: vibeTextFull.length * 0.05,
+            ease: "none",
+            onUpdate: () => {
+                const count = Math.ceil(vibeCounter.value)
+                animState.vibeText = vibeTextFull.substring(0, count)
+            }
+        }, "+=0")
+
+        // Phase 5: Love Label Fade-Up (starts after vibe typewriter)
+        tl.set(animState, { showLoveLabel: true }, "+=0.3")
+        tl.to(animState, {
+            loveLabelOpacity: 1,
+            loveLabelYOffset: 0,
+            duration: 0.8,
+            ease: "power2.out"
         })
 
-        // No fade-in. No opacity tween. Reveal instant.
-        tl.set(animState, { showText: true })
-
-        // 3. Typewriter Effect (Starts immediately after layer creation)
-        const textCounters = { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0 }
-        const content = {
-            l1: "DAILY",
-            l2: "HOROSCOPE",
-            l3: "FOR",
-            l4: zodiacStr,
-            l5: dateStr
-        }
-
-        // Helper to add typing tween
-        const addTypeTween = (counterKey, contentStr, label) => {
-            tl.to(textCounters, {
-                [counterKey]: contentStr.length,
-                duration: contentStr.length * 0.05,
-                ease: "none",
-                onUpdate: () => {
-                    const count = Math.ceil(textCounters[counterKey])
-                    if (counterKey === 'c1') animState.text1 = content.l1.substring(0, count)
-                    if (counterKey === 'c2') animState.text2 = content.l2.substring(0, count)
-                    if (counterKey === 'c3') animState.text3 = content.l3.substring(0, count)
-                    if (counterKey === 'c4') animState.text4 = content.l4.substring(0, count)
-                    if (counterKey === 'c5') animState.text5 = content.l5.substring(0, count)
-                }
-            }, label)
-        }
-
-        // Sequence: Line by line
-        addTypeTween('c1', content.l1, ">")
-        addTypeTween('c2', content.l2, ">+0.1")
-        addTypeTween('c3', content.l3, ">+0.1")
-        addTypeTween('c4', content.l4, ">+0.1")
-        addTypeTween('c5', content.l5, ">+0.2")
-
-        // 4. Final Disappearance (Hold 3s -> Fade Out)
-        // Hold for 3s (using "+=3" delay on the next tween)
-        // Fade out both the Ring (opacity) and the Text (textFade) together
+        // Phase 6: Love Content Mask Expansion (starts after label completes)
+        tl.set(animState, { showLoveContent: true })
         tl.to(animState, {
-            opacity: 0,    // Fade out ring
-            textFade: 0,   // Fade out text
-            duration: 1.5,
-            ease: "power2.inOut"
-        }, "+=3")
+            loveMaskProgress: 1,
+            duration: 1.2,
+            ease: "power1.inOut"
+        })
 
         return () => {
             tl.kill()
         }
-    }, [imagesLoaded])
+    }, [imagesLoaded, zodiacData])
 
     const handleReplay = () => {
         if (timelineRef.current) {
