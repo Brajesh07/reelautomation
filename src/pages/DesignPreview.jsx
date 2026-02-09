@@ -82,7 +82,8 @@ const DesignPreview = () => {
             scale: 0,
             rotation: 0,
             opacity: 0,
-            showText: false // STRICT control: Text layer doesn't exist until true
+            showText: false, // STRICT control
+            textFade: 1      // New: Controls fade out of text at the end
         }
 
         // Create Timeline
@@ -90,13 +91,13 @@ const DesignPreview = () => {
             repeat: 0,
             onUpdate: () => {
                 const textData = animState.showText ? {
-                    opacity: 1, // Always 1 when shown, no fade-in
+                    opacity: animState.textFade, // Controlled opacity for fade out
                     line1: animState.text1,
                     line2: animState.text2,
                     line3: animState.text3,
                     line4: animState.text4,
                     line5: animState.text5
-                } : null // Pass null to ensure text layer doesn't exist
+                } : null
 
                 renderDraftFrame(ctx, {
                     scale: animState.scale,
@@ -110,10 +111,11 @@ const DesignPreview = () => {
         })
         timelineRef.current = tl
 
-        // Initial State
+        // Initial State (Explicit Resets)
         animState.scale = 0
         animState.opacity = 0
         animState.rotation = -60
+        animState.textFade = 1
 
         // Text Initial State: Empty strings
         animState.text1 = ''
@@ -127,6 +129,9 @@ const DesignPreview = () => {
         const dateStr = formatDate(new Date())
         const zodiacStr = highlighted.join(', ').toUpperCase()
 
+        // Ensure strictly fresh state on start/restart
+        tl.set(animState, { textFade: 1 })
+
         // 1. Zodiac Sequence (Scale + Rotate)
         // 0 -> 3.5s: Zodiacs rotate and settle. Text DOES NOT EXIST.
         tl.to(animState, {
@@ -139,7 +144,18 @@ const DesignPreview = () => {
 
         // 2. Text Layer Reveal
         // STRICT TIMING: At 3.5s (end of rotation), Text Layer is created INSTANTLY.
-        // No fade-in. No opacity tween.
+
+        // CRITICAL FIX: Reset text strings immediately before showing layer
+        // This prevents "stale" text from previous plays appearing for 1 frame
+        tl.call(() => {
+            animState.text1 = ''
+            animState.text2 = ''
+            animState.text3 = ''
+            animState.text4 = ''
+            animState.text5 = ''
+        })
+
+        // No fade-in. No opacity tween. Reveal instant.
         tl.set(animState, { showText: true })
 
         // 3. Typewriter Effect (Starts immediately after layer creation)
@@ -175,6 +191,16 @@ const DesignPreview = () => {
         addTypeTween('c3', content.l3, ">+0.1")
         addTypeTween('c4', content.l4, ">+0.1")
         addTypeTween('c5', content.l5, ">+0.2")
+
+        // 4. Final Disappearance (Hold 3s -> Fade Out)
+        // Hold for 3s (using "+=3" delay on the next tween)
+        // Fade out both the Ring (opacity) and the Text (textFade) together
+        tl.to(animState, {
+            opacity: 0,    // Fade out ring
+            textFade: 0,   // Fade out text
+            duration: 1.5,
+            ease: "power2.inOut"
+        }, "+=3")
 
         return () => {
             tl.kill()
