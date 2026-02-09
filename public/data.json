@@ -1,0 +1,29 @@
+{
+  "date": "16 January 2026",
+  "zodiacs": [
+    {
+      "name": "Scorpio",
+      "vibe": "Trusting your instincts brings confidence and clarity.",
+      "love": "Patience and guidance help\nyou move past emotional delays.",
+      "career": "Learning opportunities and\nnetworking support growth.",
+      "money": "Smart budgeting brings stability\nand peace of mind.",
+      "soulMessage": "When you trust yourself,\nthe path becomes clear."
+    },
+    {
+      "name": "Libra",
+      "vibe": "A timely connection brings clarity and steady focus.",
+      "love": "Patience helps you move past\nemotional misunderstandings.",
+      "career": "Networking opens doors to\nvaluable future opportunities.",
+      "money": "Thoughtful decisions protect and\nstrengthen your finances.",
+      "soulMessage": "Trust the timing — support arrives\nwhen needed most."
+    },
+    {
+      "name": "Sagittarius",
+      "vibe": "Honest conversations bring emotional relief and harmony.",
+      "love": "Giving space allows feelings\nto settle and clarity to return.",
+      "career": "Learning and networking\nsupport long-term growth.",
+      "money": "Careful planning leads to\nrecognition and steady gains.",
+      "soulMessage": "Patience today creates\nstronger tomorrows."
+    }
+  ]
+}

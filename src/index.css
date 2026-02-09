@@ -1,0 +1,36 @@
+@font-face {
+  font-family: 'Garamond';
+  src: url('./fonts/Garamond-Regular.TTF') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Garamond';
+  src: url('./fonts/Garamond-Bold.TTF') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: #1a1a1a;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+#root {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+canvas {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}

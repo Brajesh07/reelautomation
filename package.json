@@ -1,0 +1,25 @@
+{
+  "name": "astrology-reel-automation",
+  "version": "1.0.0",
+  "description": "Data-driven animated reel system for daily astrology reels",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "export": "node scripts/export.js",
+    "export:manual": "node scripts/export-manual.js && open output/export.html",
+    "export:ffmpeg": "node scripts/export-ffmpeg.js"
+  },
+  "dependencies": {
+    "gsap": "^3.12.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^7.13.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "puppeteer": "^21.9.0",
+    "vite": "^5.0.8"
+  }
+}
