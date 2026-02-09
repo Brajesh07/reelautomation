@@ -5,6 +5,26 @@ import { renderIntroFrame } from '../frames/IntroFrame'
 import { renderZodiacFrame } from '../frames/ZodiacFrame'
 import { renderOutroFrame } from '../frames/OutroFrame'
 
+// Import Zodiac Images
+import aires from '../images/Aires.png'
+import taurus from '../images/Taurus.png'
+import gemini from '../images/Gemini.png'
+import cancer from '../images/Cancer.png'
+import leo from '../images/Leo.png'
+import virgo from '../images/Virgo.png'
+import libra from '../images/Libra.png'
+// Assuming Virgo-1 might be Scorpio or a placeholder
+import virgo1 from '../images/Virgo-1.png'
+import sagittarius from '../images/Sagittarius.png'
+import capricorn from '../images/Capricorn.png'
+import aquarius from '../images/Aquarius.png'
+import pisces from '../images/Pisces.png'
+
+const zodiacSources = [
+  aires, taurus, gemini, cancer, leo, virgo,
+  libra, virgo1, sagittarius, capricorn, aquarius, pisces
+]
+
 // Canvas dimensions for 9:16 vertical format
 const CANVAS_WIDTH = 1080
 const CANVAS_HEIGHT = 1920
@@ -13,13 +33,35 @@ const ReelCanvas = ({ data }) => {
   const canvasRef = useRef(null)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingStatus, setRecordingStatus] = useState('')
+  const [imagesLoaded, setImagesLoaded] = useState(false)
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
   const timelineRef = useRef(null)
+  const imagesRef = useRef([])
+
+  // Load Images
+  useEffect(() => {
+    let loadedCount = 0
+    const totalImages = zodiacSources.length
+    const loadedImages = new Array(totalImages)
+
+    zodiacSources.forEach((src, index) => {
+      const img = new Image()
+      img.src = src
+      img.onload = () => {
+        loadedImages[index] = img
+        loadedCount++
+        if (loadedCount === totalImages) {
+          imagesRef.current = loadedImages
+          setImagesLoaded(true)
+        }
+      }
+    })
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !data) return
+    if (!canvas || !data || !imagesLoaded) return
 
     const ctx = canvas.getContext('2d')
 
@@ -30,26 +72,143 @@ const ReelCanvas = ({ data }) => {
     // Animation state
     let opacity = { value: 1 }
 
+    // Helper for Date Format (e.g., "2nd Feb. 2026")
+    const formatDate = (date) => {
+      const d = date.getDate()
+      const m = date.toLocaleString('default', { month: 'short' })
+      const y = date.getFullYear()
+      const suffix = (d) => {
+        if (d > 3 && d < 21) return 'th'
+        switch (d % 10) {
+          case 1: return "st"
+          case 2: return "nd"
+          case 3: return "rd"
+          default: return "th"
+        }
+      }
+      return `${d}${suffix(d)} ${m} ${y}`
+    }
+
+    const dateStr = formatDate(new Date())
+    // Extract highlighted names from data
+    const highlightedNames = data.zodiacs.map(z => z.name)
+    const zodiacStr = highlightedNames.join(', ').toUpperCase()
+
+    // Intro Animation State
+    const introAnimState = {
+      scale: 0,
+      rotation: 0,
+      opacity: 0,
+      showText: false,
+      textFade: 1,
+      text1: '',
+      text2: '',
+      text3: '',
+      text4: '',
+      text5: ''
+    }
+
     // Create GSAP timeline with fade transitions (paused by default)
     const tl = gsap.timeline({ paused: true })
     timelineRef.current = tl
 
-    // Frame 1: Intro (6 seconds)
-    tl.add(() => {
-      renderIntroFrame(ctx, data)
-    })
-    tl.to({}, { duration: 5.5 })
-    // Fade out
-    tl.to(opacity, {
-      value: 0,
-      duration: 0.5,
-      onUpdate: () => {
-        ctx.globalAlpha = opacity.value
-        renderIntroFrame(ctx, data)
-      }
+    // --- Frame 1: Zodiac Intro Animation ---
+
+    // 1. Initial State
+    tl.set(introAnimState, {
+      scale: 0,
+      rotation: -60,
+      opacity: 0,
+      textFade: 1,
+      showText: false
     })
 
-    // Frame 2: Zodiac 1 (20 seconds)
+    // 2. Zodiac Sequence
+    const updateIntro = () => {
+      const textData = introAnimState.showText ? {
+        opacity: introAnimState.textFade,
+        line1: introAnimState.text1,
+        line2: introAnimState.text2,
+        line3: introAnimState.text3,
+        line4: introAnimState.text4,
+        line5: introAnimState.text5
+      } : null
+
+      renderIntroFrame(ctx, {
+        scale: introAnimState.scale,
+        rotation: introAnimState.rotation,
+        opacity: introAnimState.opacity,
+        images: imagesRef.current,
+        highlightedNames: highlightedNames,
+        textData: textData,
+        date: data.date, // Pass original data just in case
+        zodiacs: data.zodiacs
+      })
+    }
+
+    // Rotate + Scale In
+    tl.to(introAnimState, {
+      scale: 1,
+      opacity: 1,
+      rotation: 120,
+      duration: 3.5,
+      ease: "power2.out",
+      onUpdate: updateIntro
+    })
+
+    // Text Reveal State Reset
+    tl.call(() => {
+      introAnimState.text1 = ''
+      introAnimState.text2 = ''
+      introAnimState.text3 = ''
+      introAnimState.text4 = ''
+      introAnimState.text5 = ''
+    })
+    tl.set(introAnimState, { showText: true })
+
+    // Typewriter
+    const textCounters = { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0 }
+    const content = {
+      l1: "DAILY",
+      l2: "HOROSCOPE",
+      l3: "FOR",
+      l4: zodiacStr,
+      l5: dateStr
+    }
+
+    const addTypeTween = (counterKey, contentStr, label) => {
+      tl.to(textCounters, {
+        [counterKey]: contentStr.length,
+        duration: contentStr.length * 0.05,
+        ease: "none",
+        onUpdate: () => {
+          const count = Math.ceil(textCounters[counterKey])
+          if (counterKey === 'c1') introAnimState.text1 = content.l1.substring(0, count)
+          if (counterKey === 'c2') introAnimState.text2 = content.l2.substring(0, count)
+          if (counterKey === 'c3') introAnimState.text3 = content.l3.substring(0, count)
+          if (counterKey === 'c4') introAnimState.text4 = content.l4.substring(0, count)
+          if (counterKey === 'c5') introAnimState.text5 = content.l5.substring(0, count)
+          updateIntro()
+        }
+      }, label)
+    }
+
+    addTypeTween('c1', content.l1, ">")
+    addTypeTween('c2', content.l2, ">+0.1")
+    addTypeTween('c3', content.l3, ">+0.1")
+    addTypeTween('c4', content.l4, ">+0.1")
+    addTypeTween('c5', content.l5, ">+0.2")
+
+    // Hold & Fade Out
+    tl.to(introAnimState, {
+      opacity: 0,
+      textFade: 0,
+      duration: 1.5,
+      ease: "power2.inOut",
+      onUpdate: updateIntro
+    }, "+=3")
+
+    // Frame 2: Zodiac 1
     tl.add(() => {
       opacity.value = 0
       ctx.globalAlpha = opacity.value
@@ -141,7 +300,7 @@ const ReelCanvas = ({ data }) => {
     return () => {
       tl.kill()
     }
-  }, [data])
+  }, [data, imagesLoaded])
   const startRecording = () => {
     const canvas = canvasRef.current
     if (!canvas) return
