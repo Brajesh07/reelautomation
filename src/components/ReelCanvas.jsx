@@ -2,8 +2,14 @@ import React, { useRef, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { renderIntroFrame } from '../frames/IntroFrame'
-import { renderZodiacFrame } from '../frames/ZodiacFrame'
 import { renderOutroFrame } from '../frames/OutroFrame'
+import { createZodiacTimeline, renderZodiacFrame } from '../frames/ZodiacFrame'
+
+// Import Decorative Images
+import heart from '../images/heart.png'
+import trophy from '../images/trophy.png'
+import moneyBag from '../images/money-bag.png'
+import crystalBall from '../images/crystal-ball.png'
 
 // Import Zodiac Images
 import aires from '../images/Aires.png'
@@ -19,6 +25,8 @@ import sagittarius from '../images/Sagittarius.png'
 import capricorn from '../images/Capricorn.png'
 import aquarius from '../images/Aquarius.png'
 import pisces from '../images/Pisces.png'
+
+const decorativeSources = [heart, trophy, moneyBag, crystalBall]
 
 const zodiacSources = [
   aires, taurus, gemini, cancer, leo, virgo,
@@ -37,24 +45,53 @@ const ReelCanvas = ({ data }) => {
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
   const timelineRef = useRef(null)
-  const imagesRef = useRef([])
+  const imagesRef = useRef({ zodiac: [], decorative: [] })
+  // Map for easy lookup of zodiac icons by name
+  const zodiacIconsMapRef = useRef({})
 
   // Load Images
   useEffect(() => {
     let loadedCount = 0
-    const totalImages = zodiacSources.length
-    const loadedImages = new Array(totalImages)
+    const totalImages = zodiacSources.length + decorativeSources.length
+
+    const loadedZodiacs = new Array(zodiacSources.length)
+    const loadedDecorative = new Array(decorativeSources.length)
+
+    // Helper to check completion
+    const checkCompletion = () => {
+      loadedCount++
+      if (loadedCount === totalImages) {
+        // Build map
+        const names = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
+        const map = {}
+        names.forEach((name, i) => {
+          map[name] = loadedZodiacs[i]
+        })
+        zodiacIconsMapRef.current = map
+
+        imagesRef.current = {
+          zodiac: loadedZodiacs,
+          decorative: loadedDecorative
+        }
+        setImagesLoaded(true)
+      }
+    }
 
     zodiacSources.forEach((src, index) => {
       const img = new Image()
       img.src = src
       img.onload = () => {
-        loadedImages[index] = img
-        loadedCount++
-        if (loadedCount === totalImages) {
-          imagesRef.current = loadedImages
-          setImagesLoaded(true)
-        }
+        loadedZodiacs[index] = img
+        checkCompletion()
+      }
+    })
+
+    decorativeSources.forEach((src, index) => {
+      const img = new Image()
+      img.src = src
+      img.onload = () => {
+        loadedDecorative[index] = img
+        checkCompletion()
       }
     })
   }, [])
@@ -138,7 +175,7 @@ const ReelCanvas = ({ data }) => {
         scale: introAnimState.scale,
         rotation: introAnimState.rotation,
         opacity: introAnimState.opacity,
-        images: imagesRef.current,
+        images: imagesRef.current.zodiac,
         highlightedNames: highlightedNames,
         textData: textData,
         date: data.date, // Pass original data just in case
@@ -208,74 +245,21 @@ const ReelCanvas = ({ data }) => {
       onUpdate: updateIntro
     }, "+=3")
 
-    // Frame 2: Zodiac 1
-    tl.add(() => {
-      opacity.value = 0
-      ctx.globalAlpha = opacity.value
-    })
-    tl.to(opacity, {
-      value: 1,
-      duration: 0.5,
-      onUpdate: () => {
-        ctx.globalAlpha = opacity.value
-        renderZodiacFrame(ctx, data.zodiacs[0])
-      }
-    })
-    tl.to({}, { duration: 19 })
-    tl.to(opacity, {
-      value: 0,
-      duration: 0.5,
-      onUpdate: () => {
-        ctx.globalAlpha = opacity.value
-        renderZodiacFrame(ctx, data.zodiacs[0])
-      }
-    })
+    // Frame 2, 3, 4: Zodiac Animations using new ZodiacFrame logic
+    if (data.zodiacs) {
+      data.zodiacs.forEach((zodiac, index) => {
+        const isFirst = index === 0
+        const isLast = index === data.zodiacs.length - 1
+        const icon = zodiacIconsMapRef.current[zodiac.name] || zodiacIconsMapRef.current['Leo'] // fallback
 
-    // Frame 3: Zodiac 2 (20 seconds)
-    tl.add(() => {
-      opacity.value = 0
-      ctx.globalAlpha = opacity.value
-    })
-    tl.to(opacity, {
-      value: 1,
-      duration: 0.5,
-      onUpdate: () => {
-        ctx.globalAlpha = opacity.value
-        renderZodiacFrame(ctx, data.zodiacs[1])
-      }
-    })
-    tl.to({}, { duration: 19 })
-    tl.to(opacity, {
-      value: 0,
-      duration: 0.5,
-      onUpdate: () => {
-        ctx.globalAlpha = opacity.value
-        renderZodiacFrame(ctx, data.zodiacs[1])
-      }
-    })
+        const zodiacTL = createZodiacTimeline(ctx, zodiac, {
+          decorative: imagesRef.current.decorative,
+          icon: icon
+        }, { isFirst, isLast, holdDuration: 19 })
 
-    // Frame 4: Zodiac 3 (20 seconds)
-    tl.add(() => {
-      opacity.value = 0
-      ctx.globalAlpha = opacity.value
-    })
-    tl.to(opacity, {
-      value: 1,
-      duration: 0.5,
-      onUpdate: () => {
-        ctx.globalAlpha = opacity.value
-        renderZodiacFrame(ctx, data.zodiacs[2])
-      }
-    })
-    tl.to({}, { duration: 19 })
-    tl.to(opacity, {
-      value: 0,
-      duration: 0.5,
-      onUpdate: () => {
-        ctx.globalAlpha = opacity.value
-        renderZodiacFrame(ctx, data.zodiacs[2])
-      }
-    })
+        tl.add(zodiacTL)
+      })
+    }
 
     // Frame 5: Outro (4 seconds)
     tl.add(() => {
@@ -361,12 +345,12 @@ const ReelCanvas = ({ data }) => {
       timelineRef.current.restart()
     }
 
-    // Auto-stop after 70 seconds
+    // Auto-stop after 100 seconds
     setTimeout(() => {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop()
       }
-    }, 70000)
+    }, 200000)
   }
 
   const stopRecording = () => {
@@ -417,6 +401,25 @@ const ReelCanvas = ({ data }) => {
           boxSizing: 'border-box'
         }}>
           🎨 Open Design Preview
+        </Link>
+
+        <Link to="/frame-preview" style={{
+          display: 'block',
+          width: '100%',
+          padding: '15px',
+          marginBottom: '15px',
+          background: '#9b59b6',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '16px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          color: '#fff',
+          textDecoration: 'none',
+          textAlign: 'center',
+          boxSizing: 'border-box'
+        }}>
+          🖼️ Frame Preview
         </Link>
 
         {!isRecording ? (
@@ -483,8 +486,9 @@ const ReelCanvas = ({ data }) => {
           <strong style={{ color: '#ffd700' }}>How it works:</strong><br />
           • Records ONLY the canvas<br />
           • Full 1080×1920 resolution<br />
-          • 70 seconds auto-capture<br />
-          • Downloads as WebM video<br />
+          • Full 1080×1920 resolution<br />
+          • 100 seconds auto-capture<br />
+          • Downloads as WebM video<br />          • Downloads as WebM video<br />
           <br />
           <strong style={{ color: '#ffd700' }}>Convert to MP4:</strong><br />
           <code style={{

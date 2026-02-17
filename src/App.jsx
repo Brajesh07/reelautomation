@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import ReelCanvas from './components/ReelCanvas'
 import DesignPreview from './pages/DesignPreview'
+import FramePreview from './pages/FramePreview'
 
 function App() {
   const [data, setData] = useState(null)
@@ -21,6 +22,7 @@ function App() {
     <Routes>
       <Route path="/" element={<ReelCanvas data={data} />} />
       <Route path="/design" element={<DesignPreview />} />
+      <Route path="/frame-preview" element={<FramePreview />} />
     </Routes>
   )
 }
