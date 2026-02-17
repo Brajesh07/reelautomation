@@ -275,24 +275,24 @@ export const renderDraftFrame = (ctx, data = {}) => {
         ctx.restore()
     }
 
-    // Love Section
-    const {
-        text: loveText = '',
-        labelOpacity = 0,
-        labelYOffset = 0,
-        maskProgress = 0,
-        showLabel = false,
-        showContent = false
-    } = data.loveAnim || {}
+    // Generic Section Renderer
+    const drawSection = (ctx, title, text, startY, options = {}) => {
+        const {
+            labelOpacity = 0,
+            labelYOffset = 0,
+            maskProgress = 0,
+            showLabel = false,
+            showContent = false
+        } = options
 
-    if (showLabel || showContent) {
-        const loveTitleY = 550 // Positioned below vibe text
-        const loveContentY = loveTitleY + 80
         const boxWidth = 900
-        const boxHeight = 180
-        const padding = 40
+        const vertPadding = 30
+        const horizPadding = 60
+        const lineHeight = 44
+        const titleHeight = 50 // Space for title
+        const titleMargin = 30 // Space between title and box
 
-        // 1. Love Label (Fade Up)
+        // 1. Section Title (Fade Up)
         if (showLabel) {
             ctx.save()
             ctx.globalAlpha = labelOpacity
@@ -300,26 +300,35 @@ export const renderDraftFrame = (ctx, data = {}) => {
             ctx.font = 'bold 40px "Garamond", serif'
             ctx.textAlign = 'center'
             ctx.textBaseline = 'top'
-            ctx.fillText("LOVE", centerX, loveTitleY + labelYOffset)
+            ctx.fillText(title, centerX, startY + labelYOffset)
             ctx.restore()
         }
 
-        // 2. Love Content (Horizontal Mask Reveal)
-        if (showContent && loveText) {
+        const boxStartY = startY + titleHeight + titleMargin
+        let dynamicBoxHeight = 0
+
+        // 2. Section Content (Horizontal Mask Reveal)
+        if (showContent && text) {
             ctx.save()
 
-            // Text Setup
+            // Text Setup for measurement
             ctx.font = '500 32px "Garamond", serif'
-            const lineHeight = 44
-            const horizPadding = 60
-            const vertPadding = 30
 
             // Text Wrapping Calculation
-            const words = loveText.split(' ')
+            const words = text.split(' ')
             let lines = []
             let currentLine = ''
 
             words.forEach(word => {
+                // Handle newlines explicitly if text contains them
+                const wordParts = word.split('\n')
+                if (wordParts.length > 1) {
+                    // This simple split by space doesn't handle embedded newlines perfectly if we don't pre-process
+                    // But for now assuming space-separated words or relying on simple wrapping.
+                    // If the text comes with newlines, we might want to respect them.
+                    // Let's stick to auto-wrapping for consistency with previous implementation.
+                }
+
                 const testLine = currentLine ? currentLine + ' ' + word : word
                 if (ctx.measureText(testLine).width > boxWidth - horizPadding * 1.5) {
                     lines.push(currentLine)
@@ -331,17 +340,17 @@ export const renderDraftFrame = (ctx, data = {}) => {
             if (currentLine) lines.push(currentLine)
 
             // Dynamic Box Height
-            const dynamicBoxHeight = (lines.length * lineHeight) + (vertPadding * 1.5)
+            dynamicBoxHeight = (lines.length * lineHeight) + (vertPadding * 1.5)
 
             // Masking
             const maskWidth = boxWidth * maskProgress
             ctx.beginPath()
-            ctx.rect(centerX - boxWidth / 2, loveContentY, maskWidth, dynamicBoxHeight)
+            ctx.rect(centerX - boxWidth / 2, boxStartY, maskWidth, dynamicBoxHeight)
             ctx.clip()
 
             // Draw Background Strip (Solid Highlight)
             ctx.fillStyle = '#DAC477'
-            ctx.fillRect(centerX - boxWidth / 2, loveContentY, boxWidth, dynamicBoxHeight)
+            ctx.fillRect(centerX - boxWidth / 2, boxStartY, boxWidth, dynamicBoxHeight)
 
             // Draw Text (Solid Black)
             ctx.fillStyle = '#000000'
@@ -349,12 +358,52 @@ export const renderDraftFrame = (ctx, data = {}) => {
             ctx.textBaseline = 'top'
 
             lines.forEach((line, index) => {
-                ctx.fillText(line, centerX, loveContentY + vertPadding + (index * lineHeight))
+                ctx.fillText(line, centerX, boxStartY + vertPadding + (index * lineHeight))
             })
 
             ctx.restore()
+        } else {
+            // Calculate height even if not showing content yet to reserve space or animate layout if needed?
+            // For now, if content isn't shown, height effectively depends on if we want to reserve it.
+            // But simpler to just recalc height for layout purposes if we want to stack them purely dynamically.
+            // Given the animation flow, likely we want to base this on the text content always.
+            ctx.save()
+            ctx.font = '500 32px "Garamond", serif'
+            const words = text.split(' ')
+            let lines = []
+            let currentLine = ''
+            words.forEach(word => {
+                const testLine = currentLine ? currentLine + ' ' + word : word
+                if (ctx.measureText(testLine).width > boxWidth - horizPadding * 1.5) {
+                    lines.push(currentLine)
+                    currentLine = word
+                } else {
+                    currentLine = testLine
+                }
+            })
+            if (currentLine) lines.push(currentLine)
+            dynamicBoxHeight = (lines.length * lineHeight) + (vertPadding * 1.5)
+            ctx.restore()
         }
+
+        // Return total height used by this section (Title + Margin + Box + Padding below)
+        return titleHeight + titleMargin + dynamicBoxHeight + 50 // +50 margin bottom
     }
+
+    // Dynamic Sections (Love, Career, Money, Soul)
+    const sections = data.sections || [] // Expecting an array of section data
+    let currentY = 550 // Starting Y position (below Vibe text)
+
+    sections.forEach(section => {
+        const heightUsed = drawSection(
+            ctx,
+            section.title,
+            section.text,
+            currentY,
+            section.anim // Animation state for this specific section
+        )
+        currentY += heightUsed
+    })
 
 
     // Debug info (optional, remove later)
