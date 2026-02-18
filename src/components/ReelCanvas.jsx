@@ -4,6 +4,7 @@ import gsap from 'gsap'
 import { renderIntroFrame } from '../frames/IntroFrame'
 import { renderOutroFrame } from '../frames/OutroFrame'
 import { createZodiacTimeline, renderZodiacFrame } from '../frames/ZodiacFrame'
+import { formatDate } from '../utils/dateFormatter'
 
 // Import Decorative Images
 import heart from '../images/heart.png'
@@ -109,23 +110,6 @@ const ReelCanvas = ({ data }) => {
     // Animation state
     let opacity = { value: 1 }
 
-    // Helper for Date Format (e.g., "2nd Feb. 2026")
-    const formatDate = (date) => {
-      const d = date.getDate()
-      const m = date.toLocaleString('default', { month: 'short' })
-      const y = date.getFullYear()
-      const suffix = (d) => {
-        if (d > 3 && d < 21) return 'th'
-        switch (d % 10) {
-          case 1: return "st"
-          case 2: return "nd"
-          case 3: return "rd"
-          default: return "th"
-        }
-      }
-      return `${d}${suffix(d)} ${m} ${y}`
-    }
-
     const dateStr = formatDate(new Date())
     // Extract highlighted names from data
     const highlightedNames = data.zodiacs.map(z => z.name)
@@ -143,6 +127,14 @@ const ReelCanvas = ({ data }) => {
       text3: '',
       text4: '',
       text5: ''
+    }
+
+    // Outro Animation State
+    const outroAnimState = {
+      opacity: 0,
+      rotation: 0,
+      text1: '',
+      boxWidth: 0
     }
 
     // Create GSAP timeline with fade transitions (paused by default)
@@ -261,20 +253,76 @@ const ReelCanvas = ({ data }) => {
       })
     }
 
-    // Frame 5: Outro (4 seconds)
+    // Frame 5: Outro
+    const updateOutro = () => {
+      renderOutroFrame(ctx, {
+        opacity: outroAnimState.opacity,
+        rotation: outroAnimState.rotation,
+        text1: outroAnimState.text1,
+        boxWidth: outroAnimState.boxWidth,
+        images: imagesRef.current.zodiac
+      })
+    }
+
+    // 1. Enter with rotation (Group Rotation similar to IntroFrame)
     tl.add(() => {
-      opacity.value = 0
-      ctx.globalAlpha = opacity.value
+      // Ensure clean state
+      outroAnimState.opacity = 0
+      outroAnimState.rotation = 0
+      outroAnimState.text1 = ''
+      outroAnimState.boxWidth = 0
     })
-    tl.to(opacity, {
-      value: 1,
-      duration: 0.5,
+
+    // Fade in
+    tl.to(outroAnimState, {
+      opacity: 1,
+      duration: 1,
+      onUpdate: updateOutro
+    })
+
+    // Rotate (Start on entry, stop before text)
+    // We rotate 360 degrees (1 full spin)
+    tl.to(outroAnimState, {
+      rotation: 360,
+      duration: 4,
+      ease: "power2.out",
+      onUpdate: updateOutro
+    }, "<") // Start alongside fade in
+
+    // 2. Text Reveal (Typewriter) after rotation stops
+    const outroFullText = "Want a personalised reading?"
+    const outroTextCounter = { val: 0 }
+
+    tl.to(outroTextCounter, {
+      val: outroFullText.length,
+      duration: outroFullText.length * 0.05,
+      ease: "none",
       onUpdate: () => {
-        ctx.globalAlpha = opacity.value
-        renderOutroFrame(ctx)
+        outroAnimState.text1 = outroFullText.substring(0, Math.ceil(outroTextCounter.val))
+        updateOutro()
       }
     })
-    tl.to({}, { duration: 3.5 })
+
+    // 3. Yellow Box Reveal (Horizontal Mask)
+    // "Visit starryvibes.ai" inside box.
+    // Reveal mask 0 -> 100%
+    tl.to(outroAnimState, {
+      boxWidth: 100, // percentage
+      duration: 1.5,
+      ease: "power2.out",
+      onUpdate: updateOutro
+    })
+
+    // 4. Hold
+    tl.to({}, { duration: 3 })
+
+    // 5. Exit (Fade Out)
+    // No reverse mask, just fade out everything
+    tl.to(outroAnimState, {
+      opacity: 0,
+      duration: 1.0,
+      onUpdate: updateOutro
+    })
 
     // Reset alpha at the end
     tl.add(() => {

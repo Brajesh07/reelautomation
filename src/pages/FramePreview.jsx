@@ -4,6 +4,7 @@ import gsap from 'gsap'
 import { renderIntroFrame } from '../frames/IntroFrame'
 import { renderDraftFrame } from '../frames/DraftFrame'
 import { renderOutroFrame } from '../frames/OutroFrame'
+import { formatDate } from '../utils/dateFormatter'
 
 // Import Images (Similar to DesignPreview, but we only need a subset for preview if optimized, 
 // but easier to copy the load logic to ensure all assets are available)
@@ -26,6 +27,10 @@ import aquarius from '../images/Aquarius.png'
 import pisces from '../images/Pisces.png'
 
 const decorativeSources = [heart, trophy, moneyBag, crystalBall]
+
+// All 12 zodiac icons in standard order for intro ring
+const zodiacIconsArray = [aries, taurus, gemini, cancer, leo, virgo, libra, scorpio, sagittarius, capricorn, aquarius, pisces]
+
 const zodiacIcons = {
     'Aries': aries, 'Taurus': taurus, 'Gemini': gemini, 'Cancer': cancer,
     'Leo': leo, 'Virgo': virgo, 'Libra': libra, 'Scorpio': scorpio,
@@ -36,8 +41,9 @@ const FramePreview = () => {
     const canvasRef = useRef(null)
     const [imagesLoaded, setImagesLoaded] = useState(false)
     const [zodiacs, setZodiacs] = useState([])
-    const imagesRef = useRef([])          // For Intro/Outro/Deco
-    const zodiacIconsRef = useRef({})     // For Zodiac DraftFrame
+    const imagesRef = useRef([])          // For decorative images
+    const zodiacIconsRef = useRef({})     // For Zodiac DraftFrame (object)
+    const zodiacRingRef = useRef([])      // For Intro ring (array of 12)
     const timelineRef = useRef(null)
 
     // UI State
@@ -59,7 +65,8 @@ const FramePreview = () => {
 
         let loadedCount = 0
         const uniqueZodiacNames = [...new Set(zodiacs.map(z => z.name))]
-        const totalImages = decorativeSources.length + uniqueZodiacNames.length
+        // Total: decorative + unique zodiacs + all 12 for ring
+        const totalImages = decorativeSources.length + uniqueZodiacNames.length + zodiacIconsArray.length
 
         // Load decorative
         const loadedDeco = new Array(decorativeSources.length)
@@ -76,7 +83,7 @@ const FramePreview = () => {
             }
         })
 
-        // Load zodiac icons
+        // Load zodiac icons for DraftFrame (object by name)
         uniqueZodiacNames.forEach(name => {
             const img = new Image()
             const iconSrc = zodiacIcons[name] || zodiacIcons['Leo']
@@ -86,6 +93,22 @@ const FramePreview = () => {
                 loadedCount++
                 if (loadedCount === totalImages) {
                     imagesRef.current = loadedDeco
+                    setImagesLoaded(true)
+                }
+            }
+        })
+
+        // Load all 12 zodiac icons for IntroFrame ring (array)
+        const loadedRing = new Array(zodiacIconsArray.length)
+        zodiacIconsArray.forEach((src, index) => {
+            const img = new Image()
+            img.src = src
+            img.onload = () => {
+                loadedRing[index] = img
+                loadedCount++
+                if (loadedCount === totalImages) {
+                    imagesRef.current = loadedDeco
+                    zodiacRingRef.current = loadedRing
                     setImagesLoaded(true)
                 }
             }
@@ -147,19 +170,7 @@ const FramePreview = () => {
                     scale: introState.scale,
                     rotation: introState.rotation,
                     opacity: introState.opacity,
-                    images: Object.values(zodiacIcons).filter((_, i) => i < 12), // Need 12 generic icons for ring
-                    // Actually ReelCanvas loads a specific array 'zodiacSources', let's approximate or just use what we have.
-                    // The 'imagesRef.current' contains DECORATIVE images, not the 12 zodiacs for the ring.
-                    // FramePreview might need to load the 12 ring images separately if we want exact parity.
-                    // For now, let's use the ones we loaded in zodiacIconsRef if possible, or fallback.
-                    // The intro ring expects an array of 12 images. 
-                    // Let's quickly re-map from our loaded icons or just use placeholders if not critical.
-                    // Better: Allow renderIntroFrame to work with what we have.
-                    // Note: ReelCanvas loads `zodiacSources` (12 images). DesignPreview only loads used ones.
-                    // To make Intro work perfectly, we'd need all 12. 
-                    // Let's assume for this preview, we might just see emptiness or what we have.
-                    // FIX: Let's assume we pass empty array or just the loaded ones.
-                    images: [], // Placeholder to avoid crash if we didn't load all 12
+                    images: zodiacRingRef.current, // Pass the loaded 12 zodiac icons
                     highlightedNames: highlightedNames,
                     textData
                 })
@@ -180,7 +191,7 @@ const FramePreview = () => {
             const content = {
                 l1: "DAILY", l2: "HOROSCOPE", l3: "FOR",
                 l4: highlightedNames.join(', ').toUpperCase(),
-                l5: new Date().toDateString()
+                l5: formatDate(new Date())
             }
             const counters = { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0 }
 
