@@ -63,6 +63,46 @@ const UploadData = () => {
         window.location.reload()
     }
 
+    const downloadSample = () => {
+        const sampleData = {
+            "zodiacs": [
+                {
+                    "name": "Leo",
+                    "vibe": "Radiant",
+                    "love": "Passionate encounters.",
+                    "career": "Leadership success.",
+                    "money": "Invest wisely.",
+                    "soulMessage": "Shine bright."
+                },
+                {
+                    "name": "Virgo",
+                    "vibe": "Grounded",
+                    "love": "Practical love.",
+                    "career": "Detail oriented.",
+                    "money": "Budgeting pays.",
+                    "soulMessage": "Trust process."
+                },
+                {
+                    "name": "Libra",
+                    "vibe": "Balanced",
+                    "love": "Harmony is key.",
+                    "career": "Diplomacy wins.",
+                    "money": "Balance books.",
+                    "soulMessage": "Seek peace."
+                }
+            ]
+        }
+        const blob = new Blob([JSON.stringify(sampleData, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'sample-zodiac.json'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+    }
+
     return (
         <div style={{
             color: 'white',
@@ -77,6 +117,24 @@ const UploadData = () => {
                 Upload a JSON file to override the default zodiac data for the reel.<br />
                 <strong>Requirements:</strong> 3 Zodiacs with strict fields (name, vibe, love, career, money, soulMessage).
             </p>
+
+            <div style={{ marginBottom: '30px' }}>
+                <button
+                    onClick={downloadSample}
+                    style={{
+                        background: '#2196F3',
+                        color: 'white',
+                        border: 'none',
+                        padding: '12px 24px',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontSize: '16px',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    ⬇️ Download Sample JSON
+                </button>
+            </div>
 
             <div style={{
                 border: '2px dashed #444',
@@ -130,7 +188,7 @@ const UploadData = () => {
             </div>
 
             <div style={{ marginTop: '30px' }}>
-                <a href="/" style={{ color: '#DAC477', marginRight: '20px' }}>Go to Reel Canvas</a>
+                <a href="/reel-canvas" style={{ color: '#DAC477', marginRight: '20px' }}>Go to Reel Canvas</a>
                 <a href="/frame-preview" style={{ color: '#DAC477' }}>Go to Frame Preview</a>
             </div>
         </div>

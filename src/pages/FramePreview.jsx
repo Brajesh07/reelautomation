@@ -395,21 +395,28 @@ const FramePreview = () => {
             display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px'
         }}>
             <div style={{
-                display: 'flex', gap: '15px', marginBottom: '20px',
+                display: 'flex', gap: '15px', marginBottom: '20px', alignItems: 'center',
                 background: '#333', padding: '15px', borderRadius: '10px'
             }}>
-                <Link to="/" style={{ textDecoration: 'none', color: '#000', background: '#ffd700', padding: '10px 20px', borderRadius: '5px', fontWeight: 'bold' }}>
-                    ← Back
-                </Link>
-                <button onClick={() => setSelectedFrame('intro')} style={{ padding: '10px 20px', cursor: 'pointer', background: selectedFrame === 'intro' ? '#4e9eff' : '#eee' }}>
-                    Intro Frame
-                </button>
-                <button onClick={() => setSelectedFrame('zodiac')} style={{ padding: '10px 20px', cursor: 'pointer', background: selectedFrame === 'zodiac' ? '#4e9eff' : '#eee' }}>
-                    Zodiac Frame
-                </button>
-                <button onClick={() => setSelectedFrame('outro')} style={{ padding: '10px 20px', cursor: 'pointer', background: selectedFrame === 'outro' ? '#4e9eff' : '#eee' }}>
-                    Outro Frame
-                </button>
+                <label style={{ color: '#ccc', marginRight: '10px' }}>Select Frame:</label>
+                <select
+                    value={selectedFrame || ''}
+                    onChange={(e) => setSelectedFrame(e.target.value)}
+                    style={{
+                        padding: '10px',
+                        borderRadius: '5px',
+                        background: '#222',
+                        color: 'white',
+                        border: '1px solid #555',
+                        fontSize: '16px',
+                        cursor: 'pointer'
+                    }}
+                >
+                    <option value="" disabled>-- Choose Animation --</option>
+                    <option value="intro">Intro Frame</option>
+                    <option value="zodiac">Zodiac Frame (First)</option>
+                    <option value="outro">Outro Frame</option>
+                </select>
             </div>
 
             <div style={{
@@ -417,6 +424,23 @@ const FramePreview = () => {
                 height: '80vh', aspectRatio: '9/16', background: '#000'
             }}>
                 <canvas ref={canvasRef} style={{ height: '100%', width: '100%' }} />
+            </div>
+
+            <div style={{ marginTop: '20px' }}>
+                <Link to="/reel-canvas">
+                    <button style={{
+                        background: '#DAC477',
+                        color: 'black',
+                        border: 'none',
+                        padding: '15px 30px',
+                        fontSize: '18px',
+                        fontWeight: 'bold',
+                        borderRadius: '8px',
+                        cursor: 'pointer'
+                    }}>
+                        Go to Recording ➡️
+                    </button>
+                </Link>
             </div>
             {!imagesLoaded && <div style={{ color: 'white', marginTop: '10px' }}>Loading Assets...</div>}
         </div>

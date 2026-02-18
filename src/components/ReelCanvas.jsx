@@ -38,7 +38,8 @@ const zodiacSources = [
 const CANVAS_WIDTH = 1080
 const CANVAS_HEIGHT = 1920
 
-const ReelCanvas = ({ data }) => {
+const ReelCanvas = () => {
+  const [data, setData] = useState(null)
   const canvasRef = useRef(null)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingStatus, setRecordingStatus] = useState('')
@@ -46,6 +47,8 @@ const ReelCanvas = ({ data }) => {
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
   const timelineRef = useRef(null)
+  const recordingIntervalRef = useRef(null)
+  const [recordingProgress, setRecordingProgress] = useState(0)
   const imagesRef = useRef({ zodiac: [], decorative: [] })
   // Map for easy lookup of zodiac icons by name
   const zodiacIconsMapRef = useRef({})
@@ -95,6 +98,28 @@ const ReelCanvas = ({ data }) => {
         checkCompletion()
       }
     })
+  }, [])
+
+  // Load Data (Internal)
+  useEffect(() => {
+    const customData = localStorage.getItem('customZodiacData')
+    if (customData) {
+      try {
+        setData(JSON.parse(customData))
+        console.log('ReelCanvas: Loaded custom zodiac data')
+      } catch (e) {
+        console.error('ReelCanvas: Failed to parse custom data', e)
+        fetch('/data.json')
+          .then(res => res.json())
+          .then(setData)
+          .catch(err => console.error(err))
+      }
+    } else {
+      fetch('/data.json')
+        .then(res => res.json())
+        .then(setData)
+        .catch(err => console.error(err))
+    }
   }, [])
 
   useEffect(() => {
@@ -386,6 +411,22 @@ const ReelCanvas = ({ data }) => {
     setIsRecording(true)
     setRecordingStatus('🔴 Recording canvas...')
 
+    // Start Progress Tracker
+    const startTime = Date.now()
+    setRecordingProgress(0)
+
+    if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current)
+
+    recordingIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTime
+      const percent = Math.min((elapsed / 60000) * 100, 100)
+      setRecordingProgress(percent)
+
+      if (percent >= 100) {
+        clearInterval(recordingIntervalRef.current)
+      }
+    }, 100)
+
     // Start animation
     if (timelineRef.current) {
       timelineRef.current.restart()
@@ -402,8 +443,11 @@ const ReelCanvas = ({ data }) => {
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop()
+      mediaRecorderRef.current.stop()
       setRecordingStatus('Stopping...')
     }
+    if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current)
+    setRecordingProgress(0)
   }
 
   return (
@@ -416,6 +460,27 @@ const ReelCanvas = ({ data }) => {
           display: 'block',
         }}
       />
+
+      {/* Progress Bar Container */}
+      {isRecording && (
+        <div style={{
+          position: 'absolute',
+          bottom: '-25px',
+          left: '0',
+          width: '405px',
+          height: '8px',
+          background: '#333',
+          borderRadius: '4px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            width: `${recordingProgress}%`,
+            height: '100%',
+            background: '#DAC477',
+            transition: 'width 0.1s linear'
+          }} />
+        </div>
+      )}
 
       <div style={{
         width: '250px',
