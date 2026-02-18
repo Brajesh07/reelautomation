@@ -48,15 +48,31 @@ Start the development server:
 npm run dev
 ```
 
-Open http://localhost:3000 to see the reel animation.
+Open http://localhost:5173 to access the application.
+
+### Application Routes
+
+- **`/`** - Upload Data page: Upload custom JSON data or use default data
+- **`/reel-canvas`** - Main reel player with recording functionality
+- **`/design`** - Design preview with advanced multi-zodiac animations
+- **`/frame-preview`** - Frame testing tool for individual frame types
 
 ## Editing Content
 
-Edit `public/data.json` to change the daily content:
+### Method 1: Upload Custom Data (Recommended)
+
+1. Navigate to the home page (`/`)
+2. Click "Upload Custom JSON" 
+3. Select your JSON file with zodiac data
+4. Data is validated and stored in localStorage
+5. Proceed to any view to see your custom content
+
+### Method 2: Edit Default Data File
+
+Edit `public/data.json` to change the default content:
 
 ```json
 {
-  "date": "16 January 2026",
   "zodiacs": [
     {
       "name": "Scorpio",
@@ -66,12 +82,15 @@ Edit `public/data.json` to change the daily content:
       "money": "Financial advice...",
       "soulMessage": "Soul message..."
     }
-    // ... 2 more zodiacs
+    // ... 2 more zodiacs (exactly 3 required)
   ]
 }
 ```
 
-**Important**: Use `\n` for line breaks in yellow boxes.
+**Important**: 
+- Exactly 3 zodiacs required
+- Use `\n` for line breaks in content fields
+- All fields (name, vibe, love, career, money, soulMessage) are required
 
 ## Exporting Video
 
@@ -84,11 +103,11 @@ Edit `public/data.json` to change the daily content:
    npm run dev
    ```
 
-2. **Open http://localhost:3000** in your browser
+2. **Open http://localhost:5173/reel-canvas** in your browser
 
 3. **Click the "🎬 Start Recording" button** on the right side
 
-4. **Wait 70 seconds** - the animation plays and records automatically
+4. **Wait 76 seconds** - the animation plays and records automatically
 
 5. **Video downloads as WebM** - convert to MP4:
    ```bash
@@ -115,11 +134,11 @@ npm run export:ffmpeg
 
 **Steps:**
 1. The script will prompt you to prepare
-2. Open http://localhost:3000 in your browser
+2. Open http://localhost:5173/reel-canvas in your browser
 3. Position the browser window to show the canvas
 4. Press ENTER in the terminal
 5. Immediately refresh the browser to start the animation
-6. Recording captures for 70 seconds automatically
+6. Recording captures for 76 seconds automatically
 7. Video saved to `output/astrology-reel.mp4`
 
 **Note:** On first run, macOS will ask for screen recording permission for Terminal.
@@ -134,13 +153,13 @@ Go to: System Preferences → Privacy & Security → Screen Recording
 
 ### Frame Timing
 
-1. **Intro**: 6 seconds
+1. **Intro**: 12 seconds
 2. **Zodiac 1**: 20 seconds
 3. **Zodiac 2**: 20 seconds
 4. **Zodiac 3**: 20 seconds
 5. **Outro**: 4 seconds
 
-**Total**: 70 seconds
+**Total**: 76 seconds
 
 ## Customization
 
@@ -188,7 +207,7 @@ Edit `src/components/ReelCanvas.jsx` to adjust timing:
 
 ### Video export fails
 - Ensure FFmpeg is installed: `ffmpeg -version`
-- Check dev server is running on http://localhost:3000
+- Check dev server is running on http://localhost:5173
 - Verify `output/` directory has write permissions
 
 ### Fonts look wrong

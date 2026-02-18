@@ -395,16 +395,14 @@ const DesignPreview = () => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            padding: '20px',
-            overflow: 'hidden'
+            overflow: 'hidden',
         }}>
             <div style={{
                 maxWidth: '1200px',
                 width: '100%',
                 display: 'flex',
-                justifyContent: 'space-between',
+                justifyContent: 'center',
                 alignItems: 'center',
-                marginBottom: '20px'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                     <h1>Design Preview</h1>
@@ -429,7 +427,8 @@ const DesignPreview = () => {
                     color: 'black',
                     textDecoration: 'none',
                     borderRadius: '5px',
-                    fontWeight: 'bold'
+                    fontWeight: 'bold',
+                    marginLeft: '20px'
                 }}>
                     ← Back to Reel
                 </Link>
@@ -446,11 +445,12 @@ const DesignPreview = () => {
                 <canvas
                     ref={canvasRef}
                     style={{
-                        height: '90%',
-                        aspectRatio: '9/16',
+                        width: '405px',
+                        height: '720px',
                         background: '#000',
                         boxShadow: '0 0 50px rgba(0,0,0,0.5)',
-                        borderRadius: '5px'
+                        borderRadius: '0px',
+                        display: 'block'
                     }}
                 />
                 {!imagesLoaded && (

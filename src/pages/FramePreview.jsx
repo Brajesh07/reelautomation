@@ -392,7 +392,7 @@ const FramePreview = () => {
     return (
         <div style={{
             width: '100vw', height: '100vh', background: '#222',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px'
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
         }}>
             <div style={{
                 display: 'flex', gap: '15px', marginBottom: '20px', alignItems: 'center',
@@ -420,10 +420,14 @@ const FramePreview = () => {
             </div>
 
             <div style={{
-                border: '2px solid #555', borderRadius: '5px', overflow: 'hidden',
-                height: '80vh', aspectRatio: '9/16', background: '#000'
+                width: '405px',
+                height: '720px',
+                border: 'none',
+                overflow: 'hidden',
+                background: '#000',
+                boxShadow: '0 0 20px rgba(0,0,0,0.5)'
             }}>
-                <canvas ref={canvasRef} style={{ height: '100%', width: '100%' }} />
+                <canvas ref={canvasRef} style={{ width: '405px', height: '720px', display: 'block' }} />
             </div>
 
             <div style={{ marginTop: '20px' }}>

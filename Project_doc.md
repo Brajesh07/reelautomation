@@ -8,7 +8,8 @@ The animation system consists of multiple components working together to create 
 
 | Component | Type | Purpose | Key Features |
 |-----------|------|---------|-------------|
-| **ReelCanvas** | Component | Main video player | Full 70s sequence, video recording, navigation |
+| **UploadData** | Page | Data upload/validation | JSON upload, validation, sample download |
+| **ReelCanvas** | Component | Main video player | Full 76s sequence, video recording, navigation |
 | **DesignPreview** | Page | Multi-zodiac editor | Complex animations, all zodiacs, phase-by-phase |
 | **FramePreview** | Page | Frame tester | Test Intro/Zodiac/Outro individually |
 | **IntroFrame** | Renderer | Opening sequence | Spinning zodiac ring, typewriter text |
@@ -16,7 +17,7 @@ The animation system consists of multiple components working together to create 
 | **ZodiacFrame** | Renderer | Static horoscope | Simple card layout, yellow boxes |
 | **OutroFrame** | Renderer | Closing CTA | Website promotion, decorative stars |
 
-### Video Sequence (70 seconds total)
+### Video Sequence (76 seconds total)
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -24,13 +25,13 @@ The animation system consists of multiple components working together to create 
 │ • Spinning zodiac ring                              │
 │ • "DAILY HOROSCOPE FOR..." typewriter text          │
 ├─────────────────────────────────────────────────────┤
-│ Zodiac 1 (20s) - Leo                                │
+│ Zodiac 1 (20s) - Scorpio                            │
 │ • Fade in → Hold → Fade out                         │
 ├─────────────────────────────────────────────────────┤
-│ Zodiac 2 (20s) - Aries                              │
+│ Zodiac 2 (20s) - Libra                              │
 │ • Fade in → Hold → Fade out                         │
 ├─────────────────────────────────────────────────────┤
-│ Zodiac 3 (20s) - Taurus                             │
+│ Zodiac 3 (20s) - Sagittarius                        │
 │ • Fade in → Hold → Fade out                         │
 ├─────────────────────────────────────────────────────┤
 │ Outro (4s)                                          │
@@ -420,21 +421,33 @@ ctx.clip()  // Only content within mask renders
 
 ### Data Loading Pipeline
 
-1. **Fetch JSON Data**: `/data.json`
+1. **Check for Custom Data**: Check localStorage first
+   ```javascript
+   const storedData = localStorage.getItem('customZodiacData')
+   if (storedData) {
+       const data = JSON.parse(storedData)
+       setZodiacs(data.zodiacs)
+   } else {
+       // Fall back to default
+       fetch('/data.json')
+   }
+   ```
+
+2. **Fetch Default JSON Data**: `/data.json` (if no custom data)
    ```javascript
    fetch('/data.json')
        .then(res => res.json())
        .then(data => setZodiacs(data.zodiacs))
    ```
 
-2. **Load Assets**: Decorative images + zodiac icons
+3. **Load Assets**: Decorative images + zodiac icons
    ```javascript
    // Track loading with counter
    loadedCount++
    if (loadedCount === totalImages) setImagesLoaded(true)
    ```
 
-3. **Trigger Animation**: When `imagesLoaded && zodiacs.length > 0`
+4. **Trigger Animation**: When `imagesLoaded && zodiacs.length > 0`
 
 ### Expected Data Structure
 
@@ -442,16 +455,38 @@ ctx.clip()  // Only content within mask renders
 {
     "zodiacs": [
         {
-            "name": "Leo",
+            "name": "Scorpio",
             "vibe": "Confident and charismatic energy",
             "love": "Romance blooms today...",
             "career": "Leadership opportunities arise...",
             "money": "Financial gains through...",
             "soulMessage": "Trust your inner fire..."
+        },
+        {
+            "name": "Libra",
+            "vibe": "Balance and harmony prevail",
+            "love": "Patience helps...",
+            "career": "Networking opens doors...",
+            "money": "Thoughtful decisions...",
+            "soulMessage": "Trust the timing..."
+        },
+        {
+            "name": "Sagittarius",
+            "vibe": "Adventure calls your name",
+            "love": "Honest conversations...",
+            "career": "Learning supports growth...",
+            "money": "Careful planning...",
+            "soulMessage": "Patience creates tomorrows..."
         }
     ]
 }
 ```
+
+**Requirements**:
+- Exactly 3 zodiac objects required
+- Each must have: name, vibe, love, career, money, soulMessage
+- All fields must be non-empty strings
+- Line breaks supported with `\n` in text fields
 
 ### Image Assets
 
@@ -651,13 +686,14 @@ Can be uncommented for development to show:
 ### Critical Files
 
 **Core Application**:
-- `src/App.jsx` - Main app with routing setup (/, /design, /frame-preview)
+- `src/App.jsx` - Main app with routing setup (/, /reel-canvas, /design, /frame-preview)
 - `src/main.jsx` - React entry point, wraps App with BrowserRouter
 
 **Pages (Route Components)**:
-- `src/pages/index.jsx` - Placeholder component (not actively used)
+- `src/pages/UploadData.jsx` - Data upload/validation interface (home page)
 - `src/pages/DesignPreview.jsx` - Multi-zodiac animation editor with complex timeline
 - `src/pages/FramePreview.jsx` - Developer tool for testing individual frames
+- `src/pages/index.jsx` - Legacy placeholder (not actively used)
 
 **Components**:
 - `src/components/ReelCanvas.jsx` - Main video player with full sequence + recording
@@ -668,22 +704,33 @@ Can be uncommented for development to show:
 - `src/frames/ZodiacFrame.js` - Simple static horoscope card renderer
 - `src/frames/OutroFrame.js` - Call-to-action closing frame with stars
 
+**Utilities**:
+- `src/utils/dateFormatter.js` - Date formatting utilities
+
 **Data & Assets**:
-- `public/data.json` - Zodiac horoscope content (name, vibe, love, career, money, soulMessage)
+- `public/data.json` - Default zodiac horoscope content (fallback if no custom upload)
+- `localStorage` - Stores custom uploaded data ('customZodiacData' key)
 - `src/images/*.png` - Visual assets (decorative icons + 12 zodiac symbols)
+
+**Export Scripts**:
+- `scripts/export.js` - Main Puppeteer-based export script
+- `scripts/export-ffmpeg.js` - FFmpeg screen capture export
+- `scripts/export-manual.js` - Manual export with static HTML generation
+- `scripts/convert-to-mp4.sh` - Converts WebM to MP4
 
 **Styles**:
 - `src/index.css` - Global styles, font definitions (Garamond)
 
 **Build Configuration**:
 - `vite.config.js` - Vite bundler configuration
-- `package.json` - Dependencies (React, GSAP, React Router)
+- `package.json` - Dependencies (React, GSAP, React Router, Puppeteer)
 
 ### Routing Map
 
 ```
 App.jsx (BrowserRouter)
-  ├─ Route "/"              → ReelCanvas (full video player)
+  ├─ Route "/"              → UploadData (data upload/validation)
+  ├─ Route "/reel-canvas"   → ReelCanvas (full video player)
   ├─ Route "/design"        → DesignPreview (multi-zodiac editor)
   └─ Route "/frame-preview" → FramePreview (frame tester)
 ```
@@ -721,27 +768,34 @@ The animation is orchestrated by a GSAP timeline in a page-level controller, and
 ```
 App.jsx
   ├─ Router (react-router-dom)
-  │   ├─ /              → components/ReelCanvas.jsx (full video player + recording)
+  │   ├─ /              → pages/UploadData.jsx (data upload/validation)
+  │   ├─ /reel-canvas   → components/ReelCanvas.jsx (full video player + recording)
   │   ├─ /design        → pages/DesignPreview.jsx (multi-zodiac animation editor)
   │   └─ /frame-preview → pages/FramePreview.jsx (individual frame tester)
-  └─ Fetches /data.json (loads zodiac horoscope data)
+  └─ Data loaded from localStorage (custom) or /data.json (default)
 ```
 
 ### Route Breakdown
 
-**1. "/" (Home) - ReelCanvas**
-- **What users see**: Complete 70-second astrology reel video
-- **Sequence**: Intro → Zodiac 1 → Zodiac 2 → Zodiac 3 → Outro
-- **Features**: Video recording, navigation to other views
-- **Use case**: Main entry point, production video viewing/export
+**1. "/" (Home) - UploadData**
+- **What users see**: Data upload and validation interface
+- **Features**: JSON file upload, validation, sample data download, localStorage storage
+- **Validation**: Ensures exactly 3 zodiacs with all required fields
+- **Use case**: Entry point for customizing horoscope content
 
-**2. "/design" - DesignPreview**  
+**2. "/reel-canvas" - ReelCanvas**
+- **What users see**: Complete 76-second astrology reel video
+- **Sequence**: Intro → Zodiac 1 → Zodiac 2 → Zodiac 3 → Outro
+- **Features**: Video recording, navigation to other views, uses uploaded or default data
+- **Use case**: Production video viewing/export
+
+**3. "/design" - DesignPreview**  
 - **What users see**: Advanced multi-zodiac editor with complex animations
-- **Sequence**: Cycles through ALL zodiacs in data.json with full animation phases
+- **Sequence**: Cycles through ALL zodiacs in data with full animation phases
 - **Features**: Detailed animation phases (icon entry, typewriter effects, section reveals)
 - **Use case**: Testing full animation system, working with multiple zodiacs
 
-**3. "/frame-preview" - FramePreview**
+**4. "/frame-preview" - FramePreview**
 - **What users see**: Developer tool with buttons to test individual frames
 - **Options**: Test Intro, Zodiac, or Outro separately
 - **Features**: Isolated testing without running full sequence
@@ -750,11 +804,14 @@ App.jsx
 ### Data Flow
 
 ```
-App.jsx
-  ↓ fetch('/data.json')
+User uploads JSON OR uses default
+  ↓
+localStorage.setItem('customZodiacData') OR fetch('/data.json')
   ↓
 { zodiacs: [...] }
-  ↓ passed as props
+  ↓
+Pages load data (UploadData validates, others consume)
+  ↓
 ReelCanvas / DesignPreview / FramePreview
   ↓ build GSAP timeline
 Animation State (useRef)
@@ -768,22 +825,95 @@ Visual Output on Canvas
 
 ## Pages
 
-### `src/pages/index.jsx`
+### `src/pages/UploadData.jsx`
 
-**Purpose**: Simple placeholder component (currently minimal implementation).
+**Purpose**: Data upload, validation, and management interface (Home page).
+
+**What it does in Simple English**:
+This is the entry point of the application where users can upload their own custom zodiac horoscope data as a JSON file. It validates the data to ensure it has exactly 3 zodiacs with all required fields, then stores it in the browser's localStorage. Users can also download a sample JSON file to understand the correct format, or reset to use the default data.
 
 **Responsibilities**:
-- Returns a basic div with "index" text
-- Serves as placeholder for future homepage/entry point
-- Not currently used in the main routing flow
+- Provides file upload interface for JSON data
+- Validates uploaded data structure and content
+- Ensures exactly 3 zodiacs with all required fields (name, vibe, love, career, money, soulMessage)
+- Stores validated data in localStorage for session persistence
+- Generates and provides sample JSON download
+- Allows users to reset to default data
+- Navigates to frame-preview after successful upload
+- Displays clear error messages for validation failures
+
+**Key Features**:
+
+**1. Data Validation**:
+```javascript
+validateData(data) {
+  // Checks for 'zodiacs' array
+  // Ensures exactly 3 zodiac objects
+  // Validates all required fields present and non-empty
+  // Returns error message or null if valid
+}
+```
+
+**2. LocalStorage Integration**:
+- Stores custom data: `localStorage.setItem('customZodiacData', JSON.stringify(json))`
+- Other components check localStorage first before falling back to public/data.json
+- Allows session-persistent custom content
+
+**3. Sample Data Generation**:
+- Provides downloadable sample.json with correct structure
+- Shows users the expected format
+- Includes all required fields with example values
+
+**Key Code Concepts**:
+```javascript
+// File upload handler
+const handleFileUpload = (event) => {
+  const file = event.target.files[0]
+  // Validate file type (.json)
+  // Read file content
+  // Parse JSON
+  // Validate structure
+  // Store in localStorage
+  // Navigate to next view
+}
+
+// Reset functionality
+const handleReset = () => {
+  localStorage.removeItem('customZodiacData')
+  window.location.reload()
+}
+```
+
+**Validation Rules**:
+- Must have top-level `zodiacs` array
+- Exactly 3 zodiac objects required
+- Each zodiac must have: name, vibe, love, career, money, soulMessage
+- All fields must be non-empty strings
+
+**User Flow**:
+1. User arrives at home page (`/`)
+2. User uploads custom JSON file OR uses default data
+3. System validates uploaded data
+4. Valid data stored in localStorage
+5. User redirected to `/frame-preview` to test frames
+6. User can navigate to `/reel-canvas` for full video
+
+**Why it exists**:
+- Enables easy content customization without editing files
+- Provides data validation to prevent broken animations
+- Makes the app user-friendly for non-technical users
+- Allows quick content updates for daily horoscopes
+
+---
+
+### `src/pages/index.jsx`
+
+**Purpose**: Legacy placeholder component (no longer used in routing).
 
 **Current State**: 
-- Minimal implementation - just returns `<div>index</div>`
-- Can be expanded to show reel gallery, selection menu, or dashboard
-
-**Key Concepts**:
-- Placeholder for future expansion
-- Not actively used in current app flow (App.jsx routes "/" to ReelCanvas instead)
+- Simple component returning `<div>index</div>`
+- Not routed in current App.jsx
+- Can be removed or repurposed in future
 
 ---
 
@@ -894,14 +1024,14 @@ useEffect(() => {
 **Purpose**: Main reel player with full video sequence (Intro → 3 Zodiacs → Outro) and recording functionality.
 
 **What it does in Simple English**:
-This is the main video player for your astrology reel. When you open the app, this component shows the complete 70-second video sequence:
+This is the main video player for your astrology reel. This component shows the complete 76-second video sequence:
 1. **Intro** (12 seconds): Spinning zodiac ring with "DAILY HOROSCOPE FOR..." text
 2. **Zodiac 1** (20 seconds): First zodiac sign's horoscope
 3. **Zodiac 2** (20 seconds): Second zodiac sign's horoscope  
 4. **Zodiac 3** (20 seconds): Third zodiac sign's horoscope
 5. **Outro** (4 seconds): "Visit starryvibes.ai" call-to-action
 
-It also lets you **record the canvas as a video file** (WebM format) with a single button click.
+It also lets you **record the canvas as a video file** (WebM format) with a single button click. The component loads data from either localStorage (uploaded custom data) or falls back to the default public/data.json file.
 
 **Responsibilities**:
 - Creates and manages the main 1080×1920 canvas

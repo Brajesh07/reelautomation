@@ -495,7 +495,7 @@ const ReelCanvas = () => {
           📹 Export Video
         </h3>
 
-        <Link to="/design" style={{
+        {/* <Link to="/design" style={{
           display: 'block',
           width: '100%',
           padding: '15px',
@@ -512,7 +512,7 @@ const ReelCanvas = () => {
           boxSizing: 'border-box'
         }}>
           🎨 Open Design Preview
-        </Link>
+        </Link> */}
 
         <Link to="/frame-preview" style={{
           display: 'block',
@@ -586,7 +586,7 @@ const ReelCanvas = () => {
           </div>
         )}
 
-        <div style={{
+        {/* <div style={{
           marginTop: '20px',
           fontSize: '13px',
           opacity: 0.8,
@@ -613,7 +613,7 @@ const ReelCanvas = () => {
           }}>
             ffmpeg -i file.webm -c:v libx264 -crf 18 -pix_fmt yuv420p output.mp4
           </code>
-        </div>
+        </div> */}
       </div>
     </div>
   )
