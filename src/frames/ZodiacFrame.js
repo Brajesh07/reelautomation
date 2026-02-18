@@ -295,12 +295,12 @@ export const renderZodiacFrame = (ctx, data = {}) => {
  * @returns {GSAPTimeline} - The GSAP timeline for this zodiac
  */
 export const createZodiacTimeline = (ctx, zodiacData, resources, options = {}) => {
-  const { isFirst = false, isLast = false, holdDuration = 5 } = options
+  const { isFirst = false, isLast = false } = options
 
   // Initial Animation State
   const animState = {
-    decoY: isFirst ? 100 : 0,      // Start low if first, otherwise already up
-    decoOpacity: isFirst ? 0 : 0.4, // Start invisible if first, otherwise visible
+    decoY: isFirst ? 100 : 0,
+    decoOpacity: isFirst ? 0 : 0.4,
     zodiacX: -300,
     zodiacRotation: -360,
     zodiacOpacity: 0,
@@ -309,34 +309,26 @@ export const createZodiacTimeline = (ctx, zodiacData, resources, options = {}) =
     vibeText: '',
     showVibe: false,
     sections: [
-      { id: 'love', title: 'LOVE', opacity: 0, yOffset: 20, mask: 0, showLabel: false, showContent: false },
-      { id: 'career', title: 'CAREER', opacity: 0, yOffset: 20, mask: 0, showLabel: false, showContent: false },
-      { id: 'money', title: 'MONEY', opacity: 0, yOffset: 20, mask: 0, showLabel: false, showContent: false },
-      { id: 'soul', title: 'SOUL MESSAGE', opacity: 0, yOffset: 20, mask: 0, showLabel: false, showContent: false }
+      { id: 'love', title: 'LOVE', text: zodiacData.love, opacity: 0, yOffset: 20, mask: 0, showLabel: false, showContent: false },
+      { id: 'career', title: 'CAREER', text: zodiacData.career, opacity: 0, yOffset: 20, mask: 0, showLabel: false, showContent: false },
+      { id: 'money', title: 'MONEY', text: zodiacData.money, opacity: 0, yOffset: 20, mask: 0, showLabel: false, showContent: false },
+      { id: 'soul', title: 'SOUL MESSAGE', text: zodiacData.soulMessage, opacity: 0, yOffset: 20, mask: 0, showLabel: false, showContent: false }
     ]
   }
 
   const tl = gsap.timeline({
     onUpdate: () => {
-      const sectionsData = animState.sections.map(sectionState => {
-        let text = ""
-        if (sectionState.id === 'love') text = zodiacData.love
-        else if (sectionState.id === 'career') text = zodiacData.career
-        else if (sectionState.id === 'money') text = zodiacData.money
-        else if (sectionState.id === 'soul') text = zodiacData.soulMessage
-
-        return {
-          title: sectionState.title,
-          text: text || "",
-          anim: {
-            labelOpacity: sectionState.opacity,
-            labelYOffset: sectionState.yOffset,
-            maskProgress: sectionState.mask,
-            showLabel: sectionState.showLabel,
-            showContent: sectionState.showContent
-          }
+      const sectionsData = animState.sections.map(s => ({
+        title: s.title,
+        text: s.text || "",
+        anim: {
+          labelOpacity: s.opacity,
+          labelYOffset: s.yOffset,
+          maskProgress: s.mask,
+          showLabel: s.showLabel,
+          showContent: s.showContent
         }
-      })
+      }))
 
       renderZodiacFrame(ctx, {
         decorativeAnim: {
@@ -361,103 +353,110 @@ export const createZodiacTimeline = (ctx, zodiacData, resources, options = {}) =
     }
   })
 
-  // --- Animation Phases ---
+  // --- Strict Timing Implementation (Total 13s) ---
 
-  // Phase 1: Decorative Fade Up (Only if first)
+  // 1. Icon Entry (0s -> 1.5s)
+  const entryDuration = 1.5
+
   if (isFirst) {
-    tl.to(animState, {
-      decoY: 0,
-      decoOpacity: 0.4,
-      duration: 1.5,
-      ease: "power2.out"
-    })
+    tl.to(animState, { decoY: 0, decoOpacity: 0.4, duration: entryDuration, ease: "power2.out" }, 0)
   }
 
-  // Phase 2: Zodiac Icon Enter
-  // Start concurrently with Phase 1 if first, or immediately
-  const startPosition = isFirst ? "<" : "+=0"
-
+  const iconStart = isFirst ? 0 : 0 // Always start at 0 relative to timeline start
   tl.to(animState, {
     zodiacX: 0,
     zodiacRotation: 0,
     zodiacOpacity: 1,
-    duration: 1.5,
+    duration: entryDuration,
     ease: "power2.out"
-  }, startPosition)
+  }, iconStart)
 
-  // Phase 3: Name Typewriter
-  tl.set(animState, { showName: true })
+  // 2. Name Typewriter (1.5s -> 2.5s) [Duration: 1.0s]
+  const nameStart = 1.5
+  const nameDuration = 1.0
   const zodiacNameFull = (zodiacData.name || "").toUpperCase()
+
+  tl.set(animState, { showName: true }, nameStart)
   const nameCounter = { val: 0 }
   tl.to(nameCounter, {
     val: zodiacNameFull.length,
-    duration: zodiacNameFull.length * 0.1,
+    duration: nameDuration,
     ease: "none",
     onUpdate: () => {
       animState.zodiacName = zodiacNameFull.substring(0, Math.ceil(nameCounter.val))
     }
-  })
+  }, nameStart)
 
-  // Phase 4: Vibe Typewriter
+  // 3. Vibe Typewriter (2.5s -> 4.0s) [Duration: 1.5s]
+  const vibeStart = 2.5
+  const vibeDuration = 1.5
   const vibeFull = "Vibe: " + (zodiacData.vibe || "")
-  tl.set(animState, { showVibe: true }, "+=0.3")
+
+  tl.set(animState, { showVibe: true }, vibeStart)
   const vibeCounter = { val: 0 }
   tl.to(vibeCounter, {
     val: vibeFull.length,
-    duration: vibeFull.length * 0.05,
+    duration: vibeDuration,
     ease: "none",
     onUpdate: () => {
       animState.vibeText = vibeFull.substring(0, Math.ceil(vibeCounter.val))
     }
-  })
+  }, vibeStart)
 
-  // Phase 5: Sections Reveal
+  // 4. Sections (4.0s -> 9.0s) [Duration: 5.0s Window]
+  const sectionsStart = 4.0
+  const sectionDuration = 1.25
+  const sectionOverlap = 0.2
+
   animState.sections.forEach((section, idx) => {
-    const labelDelay = idx === 0 ? "+=0.3" : "-=0.8"
-    tl.set(section, { showLabel: true }, labelDelay)
-    tl.to(section, { opacity: 1, yOffset: 0, duration: 0.8, ease: "power2.out" })
-    tl.set(section, { showContent: true }, "-=0.4")
-    tl.to(section, { mask: 1, duration: 1.2, ease: "power1.inOut" })
+    // Start time: 4.0 + (1.25 - 0.2) * idx
+    // idx 0: 4.0
+    // idx 1: 5.05
+    // idx 2: 6.10
+    // idx 3: 7.15 (Ends at 8.4) -> Fits within 9.0
+    const delay = sectionsStart + (idx * (sectionDuration - sectionOverlap))
+
+    tl.set(section, { showLabel: true }, delay)
+    // Fade Up
+    tl.to(section, { opacity: 1, yOffset: 0, duration: 0.5, ease: "power2.out" }, delay)
+    // Mask Reveal (starts slightly after fade up)
+    tl.set(section, { showContent: true }, delay + 0.3)
+    tl.to(section, { mask: 1, duration: 0.9, ease: "power1.inOut" }, delay + 0.3)
   })
 
-  // Phase 6: Hold
-  // DesignPreview uses 5s hold. ReelCanvas uses 19s in previous static logic.
-  // Let's stick to DesignPreview's concise flow or user's expectation?
-  // ReelCanvas had: FadeIn(0.5) + Hold(19) + FadeOut(0.5) = 20s total per zodiac.
-  // DesignPreview has roughly: 1.5(Enter) + 0.5(Name) + 1.5(Vibe) + 4x1.2(Sections) ~ 8-10s build up.
-  // To match 20s total, we need a Hold of ~10s.
-  tl.to({}, { duration: holdDuration })
-  // Let's use 5s hold to match DesignPreview "feel" for now, or extend it? 
-  // Use 5s for now as it's safe.
+  // 5. Hold (9.0s -> 11.0s) [Duration: 2.0s]
+  // We don't need a specific tween for "hold", just ensure nothing changes.
+  // We can add a dummy tween to enforce timeline length if needed, or rely on the next event start time.
 
-  // Phase 7: Transitions / Exit
+  // 6. Fade Out (11.0s -> 13.0s) [Duration: 2.0s]
+  const exitStart = 11.0
+  const exitDuration = 2.0
+
   if (!isLast) {
-    // Transition to next zodiac (Next one will overlap or start after?)
-    // In DesignPreview, we fade out current zodiac to prepare for next.
-    tl.to(animState, { zodiacOpacity: 0, duration: 1, ease: "power2.in" }, "exit")
+    // Fade out specific elements for transition
+    tl.to(animState, { zodiacOpacity: 0, duration: exitDuration, ease: "power2.inOut" }, exitStart)
     animState.sections.forEach(s => {
-      tl.to(s, { opacity: 0, duration: 0.8 }, "exit") // Mask stays 1, opacity fades (fixed bug logic)
+      tl.to(s, { opacity: 0, duration: exitDuration * 0.8 }, exitStart)
     })
-    tl.to(animState, { showVibe: false, duration: 0.5 }, "exit+=0.5")
+    tl.to(animState, { showVibe: false, duration: 0.5 }, exitStart + 0.5)
   } else {
-    // Final Exit (Fade everything including deco)
+    // Final Exit (Fade everything to black)
     tl.to(animState, {
       decoOpacity: 0,
       zodiacOpacity: 0,
-      duration: 2,
+      duration: exitDuration,
       ease: "power2.inOut"
-    }, "finalExit")
+    }, exitStart)
 
     animState.sections.forEach(s => {
-      tl.to(s, { opacity: 0, duration: 1 }, "finalExit")
+      tl.to(s, { opacity: 0, duration: exitDuration }, exitStart)
     })
 
-    tl.to(animState, {
-      showVibe: false,
-      showName: false,
-      duration: 1
-    }, "finalExit")
+    tl.to(animState, { showName: false, showVibe: false, duration: 0.1 }, exitStart + exitDuration)
   }
+
+  // Log duration for verification
+  console.log(`[ZodiacFrame] Timeline Duration: ${tl.totalDuration()}s (Target: 13s)`)
 
   return tl
 }

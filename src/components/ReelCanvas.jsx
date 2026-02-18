@@ -236,7 +236,7 @@ const ReelCanvas = ({ data }) => {
       duration: 1.5,
       ease: "power2.inOut",
       onUpdate: updateIntro
-    }, "+=3")
+    }, "+=0.5")
 
     // Frame 2, 3, 4: Zodiac Animations using new ZodiacFrame logic
     if (data.zodiacs) {

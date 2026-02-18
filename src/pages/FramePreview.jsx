@@ -51,12 +51,29 @@ const FramePreview = () => {
 
     // 1. Fetch Data
     useEffect(() => {
-        fetch('/data.json')
-            .then(res => res.json())
-            .then(data => {
-                if (data.zodiacs) setZodiacs(data.zodiacs)
-            })
-            .catch(err => console.error(err))
+        const customData = localStorage.getItem('customZodiacData')
+        if (customData) {
+            try {
+                const parsed = JSON.parse(customData)
+                if (parsed.zodiacs) setZodiacs(parsed.zodiacs)
+                console.log('FramePreview: Loaded custom zodiac data')
+            } catch (e) {
+                console.error('FramePreview: Failed to parse custom data', e)
+                fetch('/data.json')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.zodiacs) setZodiacs(data.zodiacs)
+                    })
+                    .catch(err => console.error(err))
+            }
+        } else {
+            fetch('/data.json')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.zodiacs) setZodiacs(data.zodiacs)
+                })
+                .catch(err => console.error(err))
+        }
     }, [])
 
     // 2. Load Assets

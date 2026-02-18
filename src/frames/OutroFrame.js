@@ -18,14 +18,7 @@ export const renderOutroFrame = (ctx, data = {}) => {
   } = data
 
   // Clear canvas
-  ctx.fillStyle = '#0a0a1a' // Deep dark blue background
-  ctx.fillRect(0, 0, width, height)
-
-  // Background gradient (optional, matching previous style)
-  const gradient = ctx.createLinearGradient(0, 0, 0, height)
-  gradient.addColorStop(0, '#1a1a2e')
-  gradient.addColorStop(1, '#0f0f1e')
-  ctx.fillStyle = gradient
+  ctx.fillStyle = '#000000' // Pure black background
   ctx.fillRect(0, 0, width, height)
 
   ctx.save()
@@ -75,27 +68,25 @@ export const renderOutroFrame = (ctx, data = {}) => {
   // --- 2. Center Text (Typewriter) ---
   if (text1) {
     ctx.save()
-    ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 80px "Garamond", serif' // Using Garamond to match theme
+    // Apply text block opacity (matches IntroFrame textOpacity logic if needed, but here text1 clears on exit anyway)
+
+    ctx.fillStyle = '#DAC477' // Gold color to match IntroFrame
+    ctx.font = 'bold 42px "Garamond", sans-serif' // Match IntroFrame font
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
 
-    // Split text into two lines if needed or handle as one block
-    // "Want a personalised reading?"
-    // Let's manually wrap it to look good
-    // Line 1: Want a personalised
-    // Line 2: reading?
+    // Vertical spacing - Matches DraftFrame/IntroFrame logic
+    // Intro matches startY = centerY - 120. 
+    // We want to center this block roughly there.
+    // Centered Group Calculation:
+    // Headline (120) + Gap (50) + Box (104) = 274px Total Height
+    // Top Y = centerY - 137
+    // Line 1 Middle = Top Y + 30 = centerY - 107
+    const startY = centerY - 107
 
-    // Implementation: simple wrap or pre-calculated
-    // Since text1 is being typed, we need to handle wrapping dynamically or just render what is passed
-    // The prompt says "Display the text: 'Want a personalised reading?' Use typewriter animation."
-    // We can assume text1 contains the *current* string to display.
-    // To handle wrapping gracefully during typing, we can check lengths.
-
-    const fullText = "Want a personalised reading?"
+    // Manually wrap "Want a personalised reading?"
     const line1Full = "Want a personalised"
 
-    // Determine what part of text1 belongs to line 1 and line 2
     let currentLine1 = ""
     let currentLine2 = ""
 
@@ -106,9 +97,9 @@ export const renderOutroFrame = (ctx, data = {}) => {
       currentLine2 = text1.substring(line1Full.length)
     }
 
-    ctx.fillText(currentLine1, centerX, centerY - 50)
+    ctx.fillText(currentLine1, centerX, startY)
     if (currentLine2) {
-      ctx.fillText(currentLine2, centerX, centerY + 50)
+      ctx.fillText(currentLine2, centerX, startY + 60) // 60px line height
     }
 
     ctx.restore()
@@ -116,19 +107,28 @@ export const renderOutroFrame = (ctx, data = {}) => {
 
   // --- 3. Yellow Box (Reveal) ---
   if (boxWidth > 0) {
-    const boxHeight = 140
-    const fullBoxWidth = 800
-    const boxY = centerY + 150
+    const text = "Visit starryvibes.ai"
+
+    // ZodiacFrame styling match
+    const vertPadding = 30
+    const horizPadding = 60
+    const lineHeight = 44
 
     ctx.save()
+    // Set font for measurement
+    ctx.font = '500 32px "Garamond", serif'
+    const textMetrics = ctx.measureText(text)
+    const fullBoxWidth = textMetrics.width + (horizPadding * 2)
+    const boxHeight = lineHeight + (vertPadding * 2) // ~104px
+
+    // Position box relative to centered group
+    // Top of group = centerY - 137
+    // Box Top = Top + 120 (Headline) + 50 (Gap) = centerY + 33
+    const boxY = centerY + 33
 
     // Draw Mask
     // Center the mask expansion
-    const currentBoxWidth = fullBoxWidth * (boxWidth / 100) // boxWidth is 0-100 percentage or 0-1 factor
-    // Prompt says: "Reveal using horizontal mask animation (left → right)."
-    // So distinct from center expansion.
-    // Start X is (centerX - fullBoxWidth/2)
-
+    const currentBoxWidth = fullBoxWidth * (boxWidth / 100) // boxWidth is 0-100 percentage
     const startX = centerX - fullBoxWidth / 2
 
     ctx.beginPath()
@@ -140,13 +140,11 @@ export const renderOutroFrame = (ctx, data = {}) => {
     ctx.fillRect(startX, boxY, fullBoxWidth, boxHeight)
 
     // Draw Text inside Box
-    // "Visit starryvibes.ai"
-    // "Do not scale text." -> Text draws at full size, revealed by mask
     ctx.fillStyle = '#000000'
-    ctx.font = 'bold 60px "Garamond", serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText("Visit starryvibes.ai", centerX, boxY + boxHeight / 2)
+    // Text is drawn at full opacity/size, revealed by mask
+    ctx.fillText(text, centerX, boxY + boxHeight / 2)
 
     ctx.restore()
   }
