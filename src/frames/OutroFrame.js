@@ -33,29 +33,32 @@ export const renderOutroFrame = (ctx, data = {}) => {
 
   // --- 1. Zodiac Circle ---
   if (images && images.length > 0) {
+    const { scale = 1 } = data // Default scale to 1 if not provided
     const radius = 450 // Same radius as IntroFrame
     const iconSize = 150 // Same icon size
     const totalIcons = 12
 
     ctx.save()
     ctx.translate(centerX, centerY)
+    ctx.scale(scale, scale) // Apply scale to the group
 
     // Rotate the entire group
-    // Note: To match IntroFrame rotation direction, we use positive rotation
-    // But IntroFrame rotates clock-wise or counter-clock-wise? 
-    // Usually positive rotation in canvas is clockwise.
-    ctx.rotate((rotation * Math.PI) / 180)
+    // Note: We do NOT use ctx.rotate here because it would rotate the icons (tilting them).
+    // Instead, we add the rotation to the angle of each item so they orbit but stay upright.
+    // ctx.rotate((rotation * Math.PI) / 180) <--- REMOVED
 
     images.forEach((img, index) => {
       const angleDeg = (360 / totalIcons) * index
-      const angleRad = (angleDeg) * (Math.PI / 180)
+      // Add rotation to the angle (Orbit)
+      const angleRad = (angleDeg + rotation) * (Math.PI / 180)
 
       const x = radius * Math.cos(angleRad)
       const y = radius * Math.sin(angleRad)
 
       if (img) {
         ctx.save()
-        ctx.globalAlpha = 0.3 // Fixed 30% opacity for all
+        // Multiply by 0.3 so it combines with the global fade opacity
+        ctx.globalAlpha = ctx.globalAlpha * 0.3
 
         // Counter-rotate individual icons so they stay upright if desired?
         // IntroFrame doesn't counter-rotate, so they rotate with the ring.

@@ -302,15 +302,67 @@ const FramePreview = () => {
         // OUTRO ANIMATION
         // ----------------------------------------------------------------
         else if (selectedFrame === 'outro') {
-            const outroState = { opacity: 0 }
+            const outroState = {
+                opacity: 0,
+                rotation: -60, // Match Intro initial
+                scale: 0,      // Match Intro initial
+                text1: '',
+                boxWidth: 0
+            }
+
+            const updateOutro = () => {
+                // Intro and Outro both need the ring images
+                // Ensure we pass them
+                renderOutroFrame(ctx, {
+                    opacity: outroState.opacity,
+                    rotation: outroState.rotation,
+                    scale: outroState.scale,
+                    text1: outroState.text1,
+                    boxWidth: outroState.boxWidth,
+                    images: zodiacRingRef.current
+                })
+            }
+
+            // 1. Enter (Scale/Rotate) - Match Intro Logic
             tl.to(outroState, {
-                opacity: 1, duration: 1,
+                scale: 1,
+                opacity: 1,
+                rotation: 120,
+                duration: 3.5,
+                ease: "power2.out",
+                onUpdate: updateOutro
+            })
+
+            // 2. Text (Typewriter)
+            const fullText = "Want a personalised reading?"
+            const textCounter = { val: 0 }
+            tl.to(textCounter, {
+                val: fullText.length,
+                duration: fullText.length * 0.05,
+                ease: "none",
                 onUpdate: () => {
-                    ctx.save()
-                    ctx.globalAlpha = outroState.opacity
-                    renderOutroFrame(ctx) // Outro renderer handles its own clear/draw
-                    ctx.restore()
+                    outroState.text1 = fullText.substring(0, Math.ceil(textCounter.val))
+                    updateOutro()
                 }
+            })
+
+            // 3. Yellow Box Reveal
+            tl.to(outroState, {
+                boxWidth: 100,
+                duration: 1.5,
+                ease: "power2.out",
+                onUpdate: updateOutro
+            })
+
+            // 4. Hold
+            tl.to({}, { duration: 2 })
+
+            // 5. Exit
+            tl.to(outroState, {
+                opacity: 0,
+                duration: 1.5,
+                ease: "power2.inOut",
+                onUpdate: updateOutro
             })
         }
 

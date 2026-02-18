@@ -132,7 +132,8 @@ const ReelCanvas = ({ data }) => {
     // Outro Animation State
     const outroAnimState = {
       opacity: 0,
-      rotation: 0,
+      rotation: -60, // Match Intro initial rotation
+      scale: 0,      // Match Intro initial scale
       text1: '',
       boxWidth: 0
     }
@@ -258,6 +259,7 @@ const ReelCanvas = ({ data }) => {
       renderOutroFrame(ctx, {
         opacity: outroAnimState.opacity,
         rotation: outroAnimState.rotation,
+        scale: outroAnimState.scale,
         text1: outroAnimState.text1,
         boxWidth: outroAnimState.boxWidth,
         images: imagesRef.current.zodiac
@@ -268,26 +270,21 @@ const ReelCanvas = ({ data }) => {
     tl.add(() => {
       // Ensure clean state
       outroAnimState.opacity = 0
-      outroAnimState.rotation = 0
+      outroAnimState.rotation = -60
+      outroAnimState.scale = 0
       outroAnimState.text1 = ''
       outroAnimState.boxWidth = 0
     })
 
-    // Fade in
+    // Rotate + Scale In (Matching Intro Logic exactly)
     tl.to(outroAnimState, {
+      scale: 1,
       opacity: 1,
-      duration: 1,
-      onUpdate: updateOutro
-    })
-
-    // Rotate (Start on entry, stop before text)
-    // We rotate 360 degrees (1 full spin)
-    tl.to(outroAnimState, {
-      rotation: 360,
-      duration: 4,
+      rotation: 120,
+      duration: 3.5,
       ease: "power2.out",
       onUpdate: updateOutro
-    }, "<") // Start alongside fade in
+    })
 
     // 2. Text Reveal (Typewriter) after rotation stops
     const outroFullText = "Want a personalised reading?"
@@ -320,7 +317,8 @@ const ReelCanvas = ({ data }) => {
     // No reverse mask, just fade out everything
     tl.to(outroAnimState, {
       opacity: 0,
-      duration: 1.0,
+      duration: 1.5, // Check Intro exit duration (it was 1.5)
+      ease: "power2.inOut",
       onUpdate: updateOutro
     })
 
@@ -393,12 +391,12 @@ const ReelCanvas = ({ data }) => {
       timelineRef.current.restart()
     }
 
-    // Auto-stop after 100 seconds
+    // Auto-stop after 60 seconds
     setTimeout(() => {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop()
       }
-    }, 200000)
+    }, 60000)
   }
 
   const stopRecording = () => {
