@@ -3,7 +3,8 @@
  * @param {CanvasRenderingContext2D} ctx - The canvas context
  * @param {Object} data - The data object containing animation state and images
  */
-export const renderDraftFrame = (ctx, data = {}) => {
+export const renderDraftFrame = (ctx, data = {}, fontSizes = {}) => {
+    const _fs = fontSizes
     const width = ctx.canvas.width
     const height = ctx.canvas.height
     const centerX = width / 2
@@ -195,7 +196,7 @@ export const renderDraftFrame = (ctx, data = {}) => {
 
         // Measure text width to calculate total group width
         ctx.save()
-        ctx.font = 'bold 48px "Garamond", serif'
+        ctx.font = `bold ${_fs.zodiacName ?? 48}px "Garamond", serif`
         const textWidth = name ? ctx.measureText(name).width : 0
         ctx.restore()
 
@@ -220,7 +221,7 @@ export const renderDraftFrame = (ctx, data = {}) => {
             ctx.save()
             ctx.globalAlpha = zodiacOpacity
             ctx.fillStyle = '#DAC477'
-            ctx.font = 'bold 48px "Garamond", serif'
+            ctx.font = `bold ${_fs.zodiacName ?? 48}px "Garamond", serif`
             ctx.textAlign = 'left'
             ctx.textBaseline = 'middle'
 
@@ -245,7 +246,7 @@ export const renderDraftFrame = (ctx, data = {}) => {
 
         ctx.save()
         ctx.fillStyle = '#FFFFFF'
-        ctx.font = '36px "Garamond", serif'
+        ctx.font = `${_fs.vibe ?? 36}px "Garamond", serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
 
@@ -297,7 +298,7 @@ export const renderDraftFrame = (ctx, data = {}) => {
             ctx.save()
             ctx.globalAlpha = labelOpacity
             ctx.fillStyle = '#DAC477'
-            ctx.font = 'bold 40px "Garamond", serif'
+            ctx.font = `bold ${_fs.sectionLabel ?? 40}px "Garamond", serif`
             ctx.textAlign = 'center'
             ctx.textBaseline = 'top'
             ctx.fillText(title, centerX, startY + labelYOffset)
@@ -312,7 +313,7 @@ export const renderDraftFrame = (ctx, data = {}) => {
             ctx.save()
 
             // Text Setup for measurement
-            ctx.font = '500 32px "Garamond", serif'
+            ctx.font = `500 ${_fs.boxContent ?? 32}px "Garamond", serif`
 
             // Text Wrapping Calculation
             const words = text.split(' ')
@@ -368,7 +369,7 @@ export const renderDraftFrame = (ctx, data = {}) => {
             // But simpler to just recalc height for layout purposes if we want to stack them purely dynamically.
             // Given the animation flow, likely we want to base this on the text content always.
             ctx.save()
-            ctx.font = '500 32px "Garamond", serif'
+            ctx.font = `500 ${_fs.boxContent ?? 32}px "Garamond", serif`
             const words = text.split(' ')
             let lines = []
             let currentLine = ''

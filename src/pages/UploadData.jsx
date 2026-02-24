@@ -32,6 +32,9 @@ const UploadData = () => {
         const file = event.target.files[0]
         if (!file) return
 
+        // Reset state immediately on every new file selection
+        setError('')
+
         if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
             setError('Please upload a valid .json file.')
             return
@@ -39,6 +42,8 @@ const UploadData = () => {
 
         const reader = new FileReader()
         reader.onload = (e) => {
+            // Clear before validating in case of async timing
+            setError('')
             try {
                 const json = JSON.parse(e.target.result)
                 const validationError = validateData(json)
@@ -104,92 +109,56 @@ const UploadData = () => {
     }
 
     return (
-        <div style={{
-            color: 'white',
-            padding: '40px',
-            fontFamily: 'sans-serif',
-            maxWidth: '600px',
-            margin: '0 auto',
-            textAlign: 'center'
-        }}>
-            <h1 style={{ color: '#DAC477' }}>Upload Custom Zodiac Data</h1>
-            <p style={{ lineHeight: '1.6', marginBottom: '30px' }}>
+        <div className='text-white p-10 font-sans max-w-2xl mx-auto text-center'>
+            <h1 className='text-3xl mb-4'>Upload Custom Zodiac Data</h1>
+            <p className='leading-relaxed mb-8'>
                 Upload a JSON file to override the default zodiac data for the reel.<br />
                 <strong>Requirements:</strong> 3 Zodiacs with strict fields (name, vibe, love, career, money, soulMessage).
             </p>
 
-            <div style={{ marginBottom: '30px' }}>
+            <div className='mb-8'>
                 <button
                     onClick={downloadSample}
-                    style={{
-                        background: '#2196F3',
-                        color: 'white',
-                        border: 'none',
-                        padding: '12px 24px',
-                        borderRadius: '5px',
-                        cursor: 'pointer',
-                        fontSize: '16px',
-                        fontWeight: 'bold'
-                    }}
+                    className='bg-blue-500 text-white border-none py-3 px-6 rounded cursor-pointer text-base font-bold hover:bg-blue-600 transition-colors'
                 >
                     ⬇️ Download Sample JSON
                 </button>
             </div>
 
-            <div style={{
-                border: '2px dashed #444',
-                padding: '40px',
-                borderRadius: '10px',
-                background: 'rgba(255,255,255,0.05)'
-            }}>
+            <div className='border-2 border-dashed border-gray-600 p-10 rounded-lg bg-white bg-opacity-5'>
                 <input
                     type="file"
                     accept=".json"
                     onChange={handleFileUpload}
-                    style={{ color: 'white' }}
+                    className='text-white'
                 />
             </div>
 
             {error && (
-                <div style={{
-                    marginTop: '20px',
-                    padding: '15px',
-                    background: 'rgba(255, 68, 68, 0.2)',
-                    border: '1px solid #ff4444',
-                    borderRadius: '5px',
-                    color: '#ffaaaa'
-                }}>
+                <div className='mt-5 p-4 bg-red-500 bg-opacity-20 border border-red-500 rounded text-red-300'>
                     <strong>Error:</strong> {error}
                 </div>
             )}
 
-            <div style={{ marginTop: '40px', borderTop: '1px solid #333', paddingTop: '20px' }}>
-                <h3 style={{ fontSize: '16px', color: '#888' }}>Current Data Source</h3>
-                <p style={{ fontSize: '14px', color: localStorage.getItem('customZodiacData') ? '#4caf50' : '#888' }}>
+            <div className='mt-10 border-t border-gray-700 pt-5'>
+                <h3 className='text-base text-gray-500'>Current Data Source</h3>
+                <p className={`text-sm ${localStorage.getItem('customZodiacData') ? 'text-green-500' : 'text-gray-500'}`}>
                     {localStorage.getItem('customZodiacData') ? '✅ Start using Custom Data' : 'Using Default Data'}
                 </p>
 
                 {localStorage.getItem('customZodiacData') && (
                     <button
                         onClick={handleReset}
-                        style={{
-                            background: '#ff4444',
-                            color: 'white',
-                            border: 'none',
-                            padding: '10px 20px',
-                            borderRadius: '5px',
-                            cursor: 'pointer',
-                            marginTop: '10px'
-                        }}
+                        className='bg-red-500 text-white border-none py-2.5 px-5 rounded cursor-pointer mt-2.5 hover:bg-red-600 transition-colors'
                     >
                         Reset to Default
                     </button>
                 )}
             </div>
 
-            <div style={{ marginTop: '30px' }}>
-                <a href="/reel-canvas" style={{ color: '#DAC477', marginRight: '20px' }}>Go to Reel Canvas</a>
-                <a href="/frame-preview" style={{ color: '#DAC477' }}>Go to Frame Preview</a>
+            <div className='mt-8'>
+                <a href="/reel-canvas" className='text-[#DAC477] mr-5 hover:underline'>Go to Reel Canvas</a>
+                <a href="/frame-preview" className='text-[#DAC477] hover:underline'>Go to Frame Preview</a>
             </div>
         </div>
     )

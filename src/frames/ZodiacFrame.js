@@ -6,7 +6,8 @@ import gsap from 'gsap'
  * @param {CanvasRenderingContext2D} ctx - The canvas context
  * @param {Object} data - The data object containing animation state and images
  */
-export const renderZodiacFrame = (ctx, data = {}) => {
+export const renderZodiacFrame = (ctx, data = {}, fontSizes = {}) => {
+  const _fs = fontSizes
   const width = ctx.canvas.width
   const height = ctx.canvas.height
   const centerX = width / 2
@@ -82,7 +83,7 @@ export const renderZodiacFrame = (ctx, data = {}) => {
 
     // Measure text width to calculate total group width
     ctx.save()
-    ctx.font = 'bold 48px "Garamond", serif'
+    ctx.font = `bold ${_fs.zodiacName ?? 48}px "Garamond", serif`
     const textWidth = name ? ctx.measureText(name).width : 0
     ctx.restore()
 
@@ -107,7 +108,7 @@ export const renderZodiacFrame = (ctx, data = {}) => {
       ctx.save()
       ctx.globalAlpha = zodiacOpacity
       ctx.fillStyle = '#DAC477'
-      ctx.font = 'bold 48px "Garamond", serif'
+      ctx.font = `bold ${_fs.zodiacName ?? 48}px "Garamond", serif`
       ctx.textAlign = 'left'
       ctx.textBaseline = 'middle'
 
@@ -132,7 +133,7 @@ export const renderZodiacFrame = (ctx, data = {}) => {
 
     ctx.save()
     ctx.fillStyle = '#FFFFFF'
-    ctx.font = '36px "Garamond", serif'
+    ctx.font = `${_fs.vibe ?? 36}px "Garamond", serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
 
@@ -184,7 +185,7 @@ export const renderZodiacFrame = (ctx, data = {}) => {
       ctx.save()
       ctx.globalAlpha = labelOpacity
       ctx.fillStyle = '#DAC477'
-      ctx.font = 'bold 40px "Garamond", serif'
+      ctx.font = `bold ${_fs.sectionLabel ?? 40}px "Garamond", serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'top'
       ctx.fillText(title, centerX, startY + labelYOffset)
@@ -202,7 +203,7 @@ export const renderZodiacFrame = (ctx, data = {}) => {
       ctx.globalAlpha = labelOpacity
 
       // Text Setup for measurement
-      ctx.font = '500 32px "Garamond", serif'
+      ctx.font = `500 ${_fs.boxContent ?? 32}px "Garamond", serif`
 
       // Text Wrapping Calculation
       const words = text.split(' ')
@@ -246,7 +247,7 @@ export const renderZodiacFrame = (ctx, data = {}) => {
     } else {
       // Calculate height for layout purposes even if not shown
       ctx.save()
-      ctx.font = '500 32px "Garamond", serif'
+      ctx.font = `500 ${_fs.boxContent ?? 32}px "Garamond", serif`
       const words = text.split(' ')
       let lines = []
       let currentLine = ''
@@ -295,7 +296,7 @@ export const renderZodiacFrame = (ctx, data = {}) => {
  * @returns {GSAPTimeline} - The GSAP timeline for this zodiac
  */
 export const createZodiacTimeline = (ctx, zodiacData, resources, options = {}) => {
-  const { isFirst = false, isLast = false } = options
+  const { isFirst = false, isLast = false, holdDuration = 2, fontSizes = {} } = options
 
   // Initial Animation State
   const animState = {
@@ -349,7 +350,7 @@ export const createZodiacTimeline = (ctx, zodiacData, resources, options = {}) =
           showVibe: animState.showVibe
         },
         sections: sectionsData
-      })
+      }, fontSizes)
     }
   })
 

@@ -135,6 +135,14 @@ const ReelCanvas = () => {
     // Animation state
     let opacity = { value: 1 }
 
+    // Read font config saved from /design — zero race conditions since this
+    // runs once when data+images are ready, before the timeline is built.
+    let fontConfig = {}
+    try {
+      const saved = localStorage.getItem('fontConfig')
+      if (saved) fontConfig = JSON.parse(saved)
+    } catch { /* use defaults */ }
+
     const dateStr = formatDate(new Date())
     // Extract highlighted names from data
     const highlightedNames = data.zodiacs.map(z => z.name)
@@ -196,9 +204,9 @@ const ReelCanvas = () => {
         images: imagesRef.current.zodiac,
         highlightedNames: highlightedNames,
         textData: textData,
-        date: data.date, // Pass original data just in case
+        date: data.date,
         zodiacs: data.zodiacs
-      })
+      }, fontConfig)
     }
 
     // Rotate + Scale In
@@ -273,7 +281,7 @@ const ReelCanvas = () => {
         const zodiacTL = createZodiacTimeline(ctx, zodiac, {
           decorative: imagesRef.current.decorative,
           icon: icon
-        }, { isFirst, isLast, holdDuration: 19 })
+        }, { isFirst, isLast, holdDuration: 19, fontSizes: fontConfig })
 
         tl.add(zodiacTL)
       })
@@ -288,8 +296,9 @@ const ReelCanvas = () => {
         text1: outroAnimState.text1,
         boxWidth: outroAnimState.boxWidth,
         images: imagesRef.current.zodiac
-      })
+      }, fontConfig)
     }
+
 
     // 1. Enter with rotation (Group Rotation similar to IntroFrame)
     tl.add(() => {
@@ -451,47 +460,28 @@ const ReelCanvas = () => {
   }
 
   return (
-    <div style={{ position: 'relative', display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+    <div className='relative flex gap-5 items-start py-20'>
       <canvas
         ref={canvasRef}
+        className='block'
         style={{
           width: '405px',
-          height: '720px',
-          display: 'block',
+          height: '720px'
         }}
       />
 
       {/* Progress Bar Container */}
       {isRecording && (
-        <div style={{
-          position: 'absolute',
-          bottom: '-25px',
-          left: '0',
-          width: '405px',
-          height: '8px',
-          background: '#333',
-          borderRadius: '4px',
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            width: `${recordingProgress}%`,
-            height: '100%',
-            background: '#DAC477',
-            transition: 'width 0.1s linear'
-          }} />
+        <div className='absolute -bottom-6 left-0 h-2 bg-gray-800 rounded overflow-hidden' style={{ width: '405px' }}>
+          <div
+            className='h-full bg-[#DAC477] transition-all duration-100 ease-linear'
+            style={{ width: `${recordingProgress}%` }}
+          />
         </div>
       )}
 
-      <div style={{
-        width: '250px',
-        background: 'rgba(0, 0, 0, 0.9)',
-        padding: '20px',
-        borderRadius: '10px',
-        color: 'white',
-        position: 'sticky',
-        top: '20px'
-      }}>
-        <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#ffd700' }}>
+      <div className='w-[250px] bg-black bg-opacity-90 p-5 rounded-lg text-white sticky top-5'>
+        <h3 className='m-0 mb-4 text-lg text-yellow-400'>
           📹 Export Video
         </h3>
 
@@ -514,74 +504,28 @@ const ReelCanvas = () => {
           🎨 Open Design Preview
         </Link> */}
 
-        <Link to="/frame-preview" style={{
-          display: 'block',
-          width: '100%',
-          padding: '15px',
-          marginBottom: '15px',
-          background: '#9b59b6',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '16px',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          color: '#fff',
-          textDecoration: 'none',
-          textAlign: 'center',
-          boxSizing: 'border-box'
-        }}>
+        <Link to="/frame-preview" className='block w-full py-4 px-4 mb-4 bg-purple-600 border-none rounded-lg text-base font-bold cursor-pointer text-white no-underline text-center box-border hover:bg-purple-700 transition-colors'>
           🖼️ Frame Preview
         </Link>
 
         {!isRecording ? (
           <button
             onClick={startRecording}
-            style={{
-              width: '100%',
-              padding: '15px',
-              background: '#ffd700',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              color: '#000',
-              transition: 'background 0.2s'
-            }}
-            onMouseOver={(e) => e.target.style.background = '#ffed4e'}
-            onMouseOut={(e) => e.target.style.background = '#ffd700'}
+            className='w-full py-4 px-4 bg-yellow-400 border-none rounded-lg text-base font-bold cursor-pointer text-black transition-colors hover:bg-yellow-300'
           >
             🎬 Start Recording
           </button>
         ) : (
           <button
             onClick={stopRecording}
-            style={{
-              width: '100%',
-              padding: '15px',
-              background: '#ff4444',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              color: '#fff'
-            }}
+            className='w-full py-4 px-4 bg-red-500 border-none rounded-lg text-base font-bold cursor-pointer text-white hover:bg-red-600 transition-colors'
           >
             ⏹️ Stop Recording
           </button>
         )}
 
         {recordingStatus && (
-          <div style={{
-            marginTop: '15px',
-            fontSize: '14px',
-            textAlign: 'center',
-            padding: '12px',
-            background: 'rgba(255, 215, 0, 0.1)',
-            borderRadius: '5px',
-            border: '1px solid rgba(255, 215, 0, 0.3)'
-          }}>
+          <div className='mt-4 text-sm text-center p-3 bg-yellow-400 bg-opacity-10 rounded border border-yellow-400 border-opacity-30'>
             {recordingStatus}
           </div>
         )}

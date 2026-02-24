@@ -3,7 +3,7 @@
  * @param {CanvasRenderingContext2D} ctx - The canvas context
  * @param {Object} data - The data object containing animation state
  */
-export const renderOutroFrame = (ctx, data = {}) => {
+export const renderOutroFrame = (ctx, data = {}, fontSizes = {}) => {
   const width = ctx.canvas.width
   const height = ctx.canvas.height
   const centerX = width / 2
@@ -70,8 +70,8 @@ export const renderOutroFrame = (ctx, data = {}) => {
     ctx.save()
     // Apply text block opacity (matches IntroFrame textOpacity logic if needed, but here text1 clears on exit anyway)
 
-    ctx.fillStyle = '#DAC477' // Gold color to match IntroFrame
-    ctx.font = 'bold 42px "Garamond", sans-serif' // Match IntroFrame font
+    ctx.fillStyle = '#DAC477'
+    ctx.font = `bold ${fontSizes.sectionLabel ?? 42}px "Garamond", sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
 
@@ -116,7 +116,7 @@ export const renderOutroFrame = (ctx, data = {}) => {
 
     ctx.save()
     // Set font for measurement
-    ctx.font = '500 32px "Garamond", serif'
+    ctx.font = `500 ${fontSizes.boxContent ?? 32}px "Garamond", serif`
     const textMetrics = ctx.measureText(text)
     const fullBoxWidth = textMetrics.width + (horizPadding * 2)
     const boxHeight = lineHeight + (vertPadding * 2) // ~104px

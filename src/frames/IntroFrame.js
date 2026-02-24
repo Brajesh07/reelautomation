@@ -3,7 +3,8 @@
  * @param {CanvasRenderingContext2D} ctx - The canvas context
  * @param {Object} data - The data object containing animation state and images
  */
-export const renderIntroFrame = (ctx, data = {}) => {
+export const renderIntroFrame = (ctx, data = {}, fontSizes = {}) => {
+  const _titleSize = fontSizes.titleText ?? 42
   const width = ctx.canvas.width
   const height = ctx.canvas.height
   const centerX = width / 2
@@ -102,27 +103,27 @@ export const renderIntroFrame = (ctx, data = {}) => {
     const startY = centerY - 120
 
     // DAILY
-    ctx.font = 'bold 42px "Garamond", sans-serif'
+    ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
     ctx.fillStyle = '#DAC477'
     ctx.fillText(line1, centerX, startY)
 
     // HOROSCOPE
-    ctx.font = 'bold 42px "Garamond", sans-serif'
+    ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
     ctx.fillStyle = '#DAC477'
     ctx.fillText(line2, centerX, startY + 60)
 
     // FOR
-    ctx.font = 'bold 42px "Garamond", sans-serif'
+    ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
     ctx.fillStyle = '#DAC477'
     ctx.fillText(line3, centerX, startY + 120)
 
     // ZODIAC NAMES (Highlight color)
-    ctx.font = 'bold 42px "Garamond", sans-serif'
+    ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
     ctx.fillStyle = '#DAC477'
     ctx.fillText(line4, centerX, startY + 180, 600)
 
     // DATE
-    ctx.font = 'bold 42px "Garamond", sans-serif'
+    ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
     ctx.fillStyle = '#DAC477'
     ctx.fillText(line5, centerX, startY + 240)
 
