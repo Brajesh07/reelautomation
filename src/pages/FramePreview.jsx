@@ -4,6 +4,7 @@ import gsap from 'gsap'
 import { renderIntroFrame } from '../frames/IntroFrame'
 import { renderDraftFrame } from '../frames/DraftFrame'
 import { renderOutroFrame } from '../frames/OutroFrame'
+import { createZodiacTimeline } from '../frames/ZodiacFrame'
 import { formatDate } from '../utils/dateFormatter'
 
 // Import Images (Similar to DesignPreview, but we only need a subset for preview if optimized, 
@@ -142,6 +143,13 @@ const FramePreview = () => {
         canvas.width = 1080
         canvas.height = 1920
 
+        // Read font config saved from /design
+        let fontConfig = {}
+        try {
+            const saved = localStorage.getItem('fontConfig')
+            if (saved) fontConfig = JSON.parse(saved)
+        } catch { /* use defaults */ }
+
         // Reset Timeline
         if (timelineRef.current) timelineRef.current.kill()
 
@@ -187,10 +195,10 @@ const FramePreview = () => {
                     scale: introState.scale,
                     rotation: introState.rotation,
                     opacity: introState.opacity,
-                    images: zodiacRingRef.current, // Pass the loaded 12 zodiac icons
+                    images: zodiacRingRef.current,
                     highlightedNames: highlightedNames,
                     textData
-                })
+                }, fontConfig)
             }
 
             // Note: If we want the RING to show, we need those 12 images. 
@@ -231,88 +239,21 @@ const FramePreview = () => {
         }
 
         // ----------------------------------------------------------------
-        // ZODIAC ANIMATION (First Zodiac Only)
+        // ZODIAC ANIMATION (All Zodiacs — Sequential)
         // ----------------------------------------------------------------
         else if (selectedFrame === 'zodiac') {
-            const dataItem = zodiacs[0]
-            const icon = zodiacIconsRef.current[dataItem.name]
+            zodiacs.forEach((zodiac, index) => {
+                const isFirst = index === 0
+                const isLast = index === zodiacs.length - 1
+                const icon = zodiacIconsRef.current[zodiac.name] || zodiacIconsRef.current['Leo']
 
-            const animState = {
-                decoY: 100, decoOpacity: 0,
-                zodiacX: -300, zodiacRotation: -360, zodiacOpacity: 0,
-                zodiacName: '', showName: false,
-                vibeText: '', showVibe: false,
-                sections: [
-                    { id: 'love', title: 'LOVE', opacity: 0, yOffset: 20, mask: 0, showLabel: false, showContent: false },
-                    { id: 'career', title: 'CAREER', opacity: 0, yOffset: 20, mask: 0, showLabel: false, showContent: false },
-                    { id: 'money', title: 'MONEY', opacity: 0, yOffset: 20, mask: 0, showLabel: false, showContent: false },
-                    { id: 'soul', title: 'SOUL MESSAGE', opacity: 0, yOffset: 20, mask: 0, showLabel: false, showContent: false }
-                ]
-            }
+                const zodiacTL = createZodiacTimeline(ctx, zodiac, {
+                    decorative: imagesRef.current,
+                    icon
+                }, { isFirst, isLast, fontSizes: fontConfig })
 
-            const updateZodiac = () => {
-                // Construct payload for renderDraftFrame
-                const sectionsData = animState.sections.map(s => ({
-                    title: s.title,
-                    text: dataItem[s.id === 'soul' ? 'soulMessage' : s.id],
-                    anim: {
-                        labelOpacity: s.opacity,
-                        labelYOffset: s.yOffset,
-                        maskProgress: s.mask,
-                        showLabel: s.showLabel,
-                        showContent: s.showContent
-                    }
-                }))
-
-                renderDraftFrame(ctx, {
-                    decorativeAnim: { opacity: animState.decoOpacity, yOffset: animState.decoY, images: imagesRef.current },
-                    zodiacAnim: { icon, xOffset: animState.zodiacX, rotation: animState.zodiacRotation, opacity: animState.zodiacOpacity, name: animState.zodiacName, showName: animState.showName },
-                    vibeAnim: { text: animState.vibeText, showVibe: animState.showVibe },
-                    sections: sectionsData
-                })
-            }
-
-            // Phase 1: Deco
-            tl.to(animState, { decoY: 0, decoOpacity: 0.4, duration: 1.5, ease: "power2.out", onUpdate: updateZodiac })
-
-            // Phase 2: Zodiac Icon
-            tl.to(animState, { zodiacX: 0, zodiacRotation: 0, zodiacOpacity: 1, duration: 1.5, ease: "power2.out", onUpdate: updateZodiac }, "<")
-
-            // Phase 3: Name Typewriter
-            tl.set(animState, { showName: true })
-            const nameFull = dataItem.name.toUpperCase()
-            const nameCounter = { val: 0 }
-            tl.to(nameCounter, {
-                val: nameFull.length, duration: nameFull.length * 0.1, ease: "none",
-                onUpdate: () => {
-                    animState.zodiacName = nameFull.substring(0, Math.ceil(nameCounter.val))
-                    updateZodiac()
-                }
+                tl.add(zodiacTL)
             })
-
-            // Phase 4: Vibe
-            const vibeFull = "Vibe: " + dataItem.vibe
-            tl.set(animState, { showVibe: true }, "+=0.3")
-            const vibeCounter = { val: 0 }
-            tl.to(vibeCounter, {
-                val: vibeFull.length, duration: vibeFull.length * 0.05, ease: "none",
-                onUpdate: () => {
-                    animState.vibeText = vibeFull.substring(0, Math.ceil(vibeCounter.val))
-                    updateZodiac()
-                }
-            })
-
-            // Phase 5: Sections
-            animState.sections.forEach((section, idx) => {
-                const labelDelay = idx === 0 ? "+=0.3" : "-=0.8"
-                tl.set(section, { showLabel: true }, labelDelay)
-                tl.to(section, { opacity: 1, yOffset: 0, duration: 0.8, ease: "power2.out", onUpdate: updateZodiac })
-
-                tl.set(section, { showContent: true }, "-=0.4")
-                tl.to(section, { mask: 1, duration: 1.2, ease: "power1.inOut", onUpdate: updateZodiac })
-            })
-
-            // No Exit, just hold
         }
 
         // ----------------------------------------------------------------
@@ -337,7 +278,7 @@ const FramePreview = () => {
                     text1: outroState.text1,
                     boxWidth: outroState.boxWidth,
                     images: zodiacRingRef.current
-                })
+                }, fontConfig)
             }
 
             // 1. Enter (Scale/Rotate) - Match Intro Logic
@@ -390,63 +331,35 @@ const FramePreview = () => {
     }, [imagesLoaded, selectedFrame, zodiacs])
 
     return (
-        <div style={{
-            width: '100vw', height: '100vh', background: '#222',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
-        }}>
-            <div style={{
-                display: 'flex', gap: '15px', marginBottom: '20px', alignItems: 'center',
-                background: '#333', padding: '15px', borderRadius: '10px'
-            }}>
-                <label style={{ color: '#ccc', marginRight: '10px' }}>Select Frame:</label>
-                <select
-                    value={selectedFrame || ''}
-                    onChange={(e) => setSelectedFrame(e.target.value)}
-                    style={{
-                        padding: '10px',
-                        borderRadius: '5px',
-                        background: '#222',
-                        color: 'white',
-                        border: '1px solid #555',
-                        fontSize: '16px',
-                        cursor: 'pointer'
-                    }}
-                >
-                    <option value="" disabled>-- Choose Animation --</option>
-                    <option value="intro">Intro Frame</option>
-                    <option value="zodiac">Zodiac Frame (First)</option>
-                    <option value="outro">Outro Frame</option>
-                </select>
+        <div className='relative flex items-start py-20 gap-3'>
+            <div className='w-fit bg-black bg-opacity-90 p-5 rounded-lg text-white sticky top-5'>
+                <div className='flex gap-4 mb-5 items-center p-4 rounded-lg'>
+                    <label className='text-gray-400 mr-2.5'>Select Frame:</label>
+                    <select
+                        value={selectedFrame || ''}
+                        onChange={(e) => setSelectedFrame(e.target.value)}
+                        className='py-2.5 px-2.5 rounded bg-[#222] text-white border border-gray-600 text-base cursor-pointer hover:border-gray-500 transition-colors'
+                    >
+                        <option value="" disabled>-- Choose Animation --</option>
+                        <option value="intro">Intro Frame</option>
+                        <option value="zodiac">Zodiac Sequence (All)</option>
+                        <option value="outro">Outro Frame</option>
+                    </select>
+                </div>
+                <div className='mt-5'>
+                    <Link to="/reel-canvas">
+                        <button className='bg-[#DAC477] text-black border-none py-4 px-8 text-lg font-bold rounded-lg cursor-pointer hover:bg-[#c5b46a] transition-colors'>
+                            Go to Recording ➡️
+                        </button>
+                    </Link>
+                </div>
             </div>
 
-            <div style={{
-                width: '405px',
-                height: '720px',
-                border: 'none',
-                overflow: 'hidden',
-                background: '#000',
-                boxShadow: '0 0 20px rgba(0,0,0,0.5)'
-            }}>
-                <canvas ref={canvasRef} style={{ width: '405px', height: '720px', display: 'block' }} />
+            <div className='border-none overflow-hidden bg-black' style={{ width: '405px', height: '720px', boxShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
+                <canvas ref={canvasRef} className='block' style={{ width: '405px', height: '720px' }} />
             </div>
 
-            <div style={{ marginTop: '20px' }}>
-                <Link to="/reel-canvas">
-                    <button style={{
-                        background: '#DAC477',
-                        color: 'black',
-                        border: 'none',
-                        padding: '15px 30px',
-                        fontSize: '18px',
-                        fontWeight: 'bold',
-                        borderRadius: '8px',
-                        cursor: 'pointer'
-                    }}>
-                        Go to Recording ➡️
-                    </button>
-                </Link>
-            </div>
-            {!imagesLoaded && <div style={{ color: 'white', marginTop: '10px' }}>Loading Assets...</div>}
+            {!imagesLoaded && <div className='text-white mt-2.5'>Loading Assets...</div>}
         </div>
     )
 }
