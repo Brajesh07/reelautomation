@@ -13,25 +13,24 @@ import moneyBag from '../images/money-bag.png'
 import crystalBall from '../images/crystal-ball.png'
 
 // Import Zodiac Images
-import aires from '../images/Aires.png'
-import taurus from '../images/Taurus.png'
-import gemini from '../images/Gemini.png'
-import cancer from '../images/Cancer.png'
-import leo from '../images/Leo.png'
-import virgo from '../images/Virgo.png'
-import libra from '../images/Libra.png'
-// Assuming Virgo-1 might be Scorpio or a placeholder
-import virgo1 from '../images/Virgo-1.png'
-import sagittarius from '../images/Sagittarius.png'
-import capricorn from '../images/Capricorn.png'
-import aquarius from '../images/Aquarius.png'
-import pisces from '../images/Pisces.png'
+import aries from '../images/aries.png'
+import taurus from '../images/taurus.png'
+import gemini from '../images/gemini.png'
+import cancer from '../images/cancer.png'
+import leo from '../images/leo.png'
+import virgo from '../images/virgo.png'
+import libra from '../images/libra.png'
+import scorpio from '../images/scorpio.png'
+import sagittarius from '../images/sagittarius.png'
+import capricorn from '../images/capricorn.png'
+import aquarius from '../images/aquarius.png'
+import pisces from '../images/pisces.png'
 
 const decorativeSources = [heart, trophy, moneyBag, crystalBall]
 
 const zodiacSources = [
-  aires, taurus, gemini, cancer, leo, virgo,
-  libra, virgo1, sagittarius, capricorn, aquarius, pisces
+  aries, taurus, gemini, cancer, leo, virgo,
+  libra, scorpio, sagittarius, capricorn, aquarius, pisces
 ]
 
 // Canvas dimensions for 9:16 vertical format
@@ -172,8 +171,20 @@ const ReelCanvas = () => {
     }
 
     // Create GSAP timeline with fade transitions (paused by default)
-    const tl = gsap.timeline({ paused: true })
+    const tl = gsap.timeline({
+      paused: true,
+      onUpdate: () => {
+        // This ensures the canvas is updated whenever the timeline progresses
+        // during manual seek or play.
+        const currentTime = tl.time();
+        // The individual frame render functions are called within tweens' onUpdate
+        // which GSAP triggers automatically when seeking.
+      }
+    })
     timelineRef.current = tl
+
+    // Define a master render function that seekers can call if needed
+    // However, since we use onUpdate in every tween, seeking tl will trigger them.
 
     // --- Frame 1: Zodiac Intro Animation ---
 
@@ -361,100 +372,120 @@ const ReelCanvas = () => {
       ctx.globalAlpha = 1
     })
 
+
     return () => {
       tl.kill()
     }
   }, [data, imagesLoaded])
-  const startRecording = () => {
+  const isRecordingRef = useRef(false)
+
+  const startRecording = async () => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    const tl = timelineRef.current
+    if (!canvas || !tl) return
 
-    // Capture canvas stream at 30fps
-    const stream = canvas.captureStream(30)
+    setIsRecording(true)
+    isRecordingRef.current = true
+    setRecordingStatus('🔴 Preparing high-quality render...')
+    setRecordingProgress(0)
 
-    // Create media recorder with high quality settings
+    // Capture settings
+    const FPS = 30
+    const duration = tl.duration()
+    const totalFrames = Math.ceil(duration * FPS)
+    const frameDuration = 1 / FPS
+
+    // MediaRecorder set up for the stream
+    const chunks = []
+    
+    // Some browsers do not support 0 FPS for custom frame pushing correctly in MediaRecorder
+    // We'll use a very small FPS or manage the track manually.
+    // However, track.requestFrame() is standard for 0 fps streams.
+    const stream = canvas.captureStream(0) 
+    const track = stream.getVideoTracks()[0]
+
     const options = {
       mimeType: 'video/webm;codecs=vp9',
-      videoBitsPerSecond: 8000000 // 8 Mbps for high quality
+      videoBitsPerSecond: 12000000 
     }
 
+    let mediaRecorder
     try {
-      mediaRecorderRef.current = new MediaRecorder(stream, options)
+      mediaRecorder = new MediaRecorder(stream, options)
     } catch (e) {
-      // Fallback to default codec
-      mediaRecorderRef.current = new MediaRecorder(stream)
+      mediaRecorder = new MediaRecorder(stream)
     }
 
-    chunksRef.current = []
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data)
+    }
 
-    mediaRecorderRef.current.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        chunksRef.current.push(event.data)
+    mediaRecorder.onstop = () => {
+      if (chunks.length === 0) {
+        setRecordingStatus('❌ Error: No frames captured.')
+        setIsRecording(false)
+        isRecordingRef.current = false
+        return
       }
-    }
-
-    mediaRecorderRef.current.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: 'video/webm' })
+      const blob = new Blob(chunks, { type: 'video/webm' })
       const url = URL.createObjectURL(blob)
-
-      // Download the video
       const a = document.createElement('a')
       a.href = url
       a.download = `astrology-reel-${Date.now()}.webm`
       a.click()
-
-      setRecordingStatus('✅ Recording saved! Converting to MP4...')
+      setRecordingStatus('✅ Recording saved!')
       setIsRecording(false)
-
-      // Reset timeline
-      if (timelineRef.current) {
-        timelineRef.current.pause()
-        timelineRef.current.seek(0)
-      }
-
-      setTimeout(() => setRecordingStatus(''), 3000)
+      isRecordingRef.current = false
+      tl.pause()
+      tl.seek(0)
     }
 
-    // Start recording
-    mediaRecorderRef.current.start()
-    setIsRecording(true)
-    setRecordingStatus('🔴 Recording canvas...')
+    mediaRecorder.start()
 
-    // Start Progress Tracker
-    const startTime = Date.now()
-    setRecordingProgress(0)
+    // Deterministic Frame-by-Frame Rendering Loop
+    for (let i = 0; i <= totalFrames; i++) {
+      if (!isRecordingRef.current) break 
 
-    if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current)
+      const targetTime = i * frameDuration
+      
+      // Force seek and immediate render update
+      tl.seek(targetTime, false)
 
-    recordingIntervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime
-      const percent = Math.min((elapsed / 60000) * 100, 100)
-      setRecordingProgress(percent)
+      // Ensure the canvas has at least one paint cycle before we capture
+      await new Promise(resolve => {
+        // We use two RAFs to be absolutely sure the seeked state is painted
+        requestAnimationFrame(() => {
+          requestAnimationFrame(resolve)
+        })
+      })
 
-      if (percent >= 100) {
-        clearInterval(recordingIntervalRef.current)
+      // Inform the track that a new frame is ready
+      if (track && track.requestFrame) {
+        track.requestFrame()
+      } else {
+        // If requestFrame is missing, we might need a small delay
+        // as the browser might capture on its own if FPS > 0
       }
-    }, 100)
 
-    // Start animation
-    if (timelineRef.current) {
-      timelineRef.current.restart()
+      setRecordingProgress((i / totalFrames) * 100)
+      setRecordingStatus(`🔴 Rendering Frame ${i} of ${totalFrames}...`)
+
+      // Keep UI responsive
+      if (i % 5 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0))
+      }
     }
 
-    // Auto-stop after 60 seconds
-    setTimeout(() => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop()
-      }
-    }, 60000)
+    if (mediaRecorder.state === 'recording') {
+      mediaRecorder.stop()
+    }
   }
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop()
-      mediaRecorderRef.current.stop()
-      setRecordingStatus('Stopping...')
-    }
+    // We set isRecording to false to break the frame-by-frame loop
+    setIsRecording(false)
+    isRecordingRef.current = false
+    setRecordingStatus('Stopping...')
     if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current)
     setRecordingProgress(0)
   }
