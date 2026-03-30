@@ -1,233 +1,74 @@
-# Astrology Reel Automation
+# CanvaReel — README
 
-React + Canvas based system for generating data-driven astrology reels for Instagram.
+> Remotion-based vertical astrology reel video generator.  
+> Input: `public/data.json` → Output: MP4 (1080×1920, 9:16, 30fps)
 
-## Project Structure
+---
 
-```
-CanvaReel/
-├── public/
-│   └── data.json          # Dynamic content data
-├── src/
-│   ├── components/
-│   │   └── ReelCanvas.jsx # Main canvas component with GSAP timeline
-│   ├── frames/
-│   │   ├── IntroFrame.js  # Frame 1: Intro
-│   │   ├── ZodiacFrame.js # Frames 2-4: Zodiac cards
-│   │   └── OutroFrame.js  # Frame 5: Outro/CTA
-│   ├── App.jsx
-│   ├── main.jsx
-│   └── index.css
-├── scripts/
-│   └── export.js          # Puppeteer + FFmpeg export script
-├── package.json
-├── vite.config.js
-└── astrology-reel-spec.md # Full specification
-```
-
-## Features
-
-- **5 Frame Structure**: Intro → 3 Zodiac Cards → Outro
-- **70 Second Duration**: Auto-timed with GSAP animations
-- **Data-Driven**: All content from JSON (following [] static, {} dynamic rule)
-- **Canvas Rendering**: Pure HTML5 Canvas (no DOM text)
-- **Smooth Transitions**: Fade animations between frames
-- **Video Export**: Automated PNG sequence → MP4 conversion
-
-## Installation
+## Quick Start
 
 ```bash
 npm install
+npm run preview        # Open Remotion Studio with live scrubbing
 ```
 
-## Development
+---
 
-Start the development server:
+## Generate a Video
 
 ```bash
-npm run dev
+# Render to MP4
+npx remotion render remotion.index.jsx AstrologyReel out/video.mp4
+
+# Render specific frame range (useful for testing)
+npx remotion render remotion.index.jsx AstrologyReel out/video.mp4 --frames=0-240
 ```
 
-Open http://localhost:5173 to access the application.
+---
 
-### Application Routes
+## Change the Content
 
-- **`/`** - Upload Data page: Upload custom JSON data or use default data
-- **`/reel-canvas`** - Main reel player with recording functionality
-- **`/design`** - Design preview with advanced multi-zodiac animations
-- **`/frame-preview`** - Frame testing tool for individual frame types
-
-## Editing Content
-
-### Method 1: Upload Custom Data (Recommended)
-
-1. Navigate to the home page (`/`)
-2. Click "Upload Custom JSON" 
-3. Select your JSON file with zodiac data
-4. Data is validated and stored in localStorage
-5. Proceed to any view to see your custom content
-
-### Method 2: Edit Default Data File
-
-Edit `public/data.json` to change the default content:
+Edit `public/data.json`:
 
 ```json
 {
   "zodiacs": [
     {
       "name": "Scorpio",
-      "vibe": "Your daily vibe message...",
-      "love": "Multi-line text\nsupported with \\n",
-      "career": "Career guidance...",
-      "money": "Financial advice...",
-      "soulMessage": "Soul message..."
+      "vibe": "Short tagline for this sign.",
+      "love": "Love reading text.",
+      "career": "Career reading text.",
+      "money": "Money reading text.",
+      "soulMessage": "Soul message text."
     }
-    // ... 2 more zodiacs (exactly 3 required)
   ]
 }
 ```
 
-**Important**: 
-- Exactly 3 zodiacs required
-- Use `\n` for line breaks in content fields
-- All fields (name, vibe, love, career, money, soulMessage) are required
-
-## Exporting Video
-
-### Method 1: Browser Canvas Recording (Recommended ⭐)
-
-**The easiest way - records ONLY the canvas element at full 1080×1920 resolution:**
-
-1. **Start the dev server:**
-   ```bash
-   npm run dev
-   ```
-
-2. **Open http://localhost:5173/reel-canvas** in your browser
-
-3. **Click the "🎬 Start Recording" button** on the right side
-
-4. **Wait 76 seconds** - the animation plays and records automatically
-
-5. **Video downloads as WebM** - convert to MP4:
-   ```bash
-   ./scripts/convert-to-mp4.sh ~/Downloads/astrology-reel-*.webm
-   ```
-
-**Benefits:**
-- ✅ Records only the canvas (no UI, no screen clutter)
-- ✅ Perfect 1080×1920 resolution
-- ✅ No screen recording permissions needed
-- ✅ Works on any screen setup (single/multiple monitors)
-
-### Method 2: FFmpeg Screen Capture
-
-The easiest automated way to export your reel:
-
-```bash
-# 1. Make sure dev server is running
-npm run dev
-
-# 2. In a new terminal, run the FFmpeg export
-npm run export:ffmpeg
-```
-
-**Steps:**
-1. The script will prompt you to prepare
-2. Open http://localhost:5173/reel-canvas in your browser
-3. Position the browser window to show the canvas
-4. Press ENTER in the terminal
-5. Immediately refresh the browser to start the animation
-6. Recording captures for 76 seconds automatically
-7. Video saved to `output/astrology-reel.mp4`
-
-**Note:** On first run, macOS will ask for screen recording permission for Terminal.
-Go to: System Preferences → Privacy & Security → Screen Recording
-
-### Method 2: QuickTime Player (Manual)
-
-## Content Rules
-
-- **[Text]** = Static content (never changes)
-- **{Text}** = Dynamic content (from JSON)
-
-### Frame Timing
-
-1. **Intro**: 12 seconds
-2. **Zodiac 1**: 20 seconds
-3. **Zodiac 2**: 20 seconds
-4. **Zodiac 3**: 20 seconds
-5. **Outro**: 4 seconds
-
-**Total**: 76 seconds
-
-## Customization
-
-### Colors
-
-Edit the frame files in `src/frames/`:
-- Background: `#1a1a2e` → `#0f0f1e` gradient
-- Gold text: `#ffd700`
-- Yellow boxes: `#ffe680`
-
-### Fonts
-
-Canvas uses Arial by default. To add custom fonts:
-1. Add font files to `public/fonts/`
-2. Load fonts in frame rendering functions
-3. Update `ctx.font` declarations
-
-### Animation Duration
-
-Edit `src/components/ReelCanvas.jsx` to adjust timing:
-- Change `duration` values in GSAP timeline
-- Update `scripts/export.js` TOTAL_DURATION if needed
-
-## Tech Stack
-
-- **React 18** - Component framework
-- **Vite** - Build tool & dev server
-- **GSAP 3** - Animation timeline
-- **HTML5 Canvas** - Rendering engine
-- **Puppeteer** - Headless browser for capture
-- **FFmpeg** - Video encoding
-
-## Success Criteria ✓
-
-- [x] Daily reel generated by editing JSON only
-- [x] No After Effects required
-- [x] Canvas-based rendering
-- [x] GSAP timeline animations
-- [x] Auto-export to MP4
-- [x] 9:16 vertical format (1080×1920)
-- [x] 70 seconds total duration
-- [x] Static/dynamic content separation
-
-## Troubleshooting
-
-### Video export fails
-- Ensure FFmpeg is installed: `ffmpeg -version`
-- Check dev server is running on http://localhost:5173
-- Verify `output/` directory has write permissions
-
-### Fonts look wrong
-- Canvas doesn't support web fonts by default
-- Use system fonts or load fonts programmatically
-
-### Animation timing is off
-- Check GSAP timeline in ReelCanvas.jsx
-- Verify total duration adds up to 70 seconds
-- Update TOTAL_DURATION in export.js if changed
-
-## Future Enhancements
-
-- Batch generation from multiple JSON files
-- Custom background images per zodiac
-- Audio track integration
-- Real-time preview controls
-- Export progress UI
+- Add or remove entries to change the number of zodiac scenes.
+- Total video duration is computed automatically.
+- `name` must be one of: `Aries Taurus Gemini Cancer Leo Virgo Libra Scorpio Sagittarius Capricorn Aquarius Pisces`
+- Use `\n` in strings for line breaks inside yellow boxes.
 
 ---
 
-**License**: MIT  
-**Author**: Created following astrology-reel-spec.md
+## Project Structure
+
+```
+src/remotion/          ← Video composition (Main.jsx, segments, components)
+src/frames/            ← Legacy canvas renderers (export scripts only)
+src/images/            ← All PNG assets
+public/data.json       ← All video content
+remotion.index.jsx     ← Remotion entry point
+```
+
+---
+
+## Documentation
+
+| File                                                 | Contents                                                             |
+| ---------------------------------------------------- | -------------------------------------------------------------------- |
+| [remotion_doc.md](remotion_doc.md)                   | Project overview, data contract, design system, animation primitives |
+| [remotion_architecture.md](remotion_architecture.md) | File structure, component tree, data flow, sync points               |
+| [remotion_logic.md](remotion_logic.md)               | Phase system, interpolation patterns, every animation explained      |
+| [remotion_timing.md](remotion_timing.md)             | Full frame-by-frame timeline, duration constants, scaling table      |

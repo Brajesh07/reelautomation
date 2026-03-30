@@ -1,24 +1,25 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
-import ReelCanvas from './components/ReelCanvas'
-import DesignPreview from './pages/DesignPreview'
-import FramePreview from './pages/FramePreview'
-import UploadData from './pages/UploadData'
-import LayoutWithHeader from './components/LayoutWithHeader'
 
+// This Vite app shell is intentionally minimal.
+// The project is fully Remotion-based — use:
+//   npm run remotion:preview   → live studio
+//   npm run remotion:render    → export MP4
 function App() {
   return (
-    <Routes>
-      {/* Upload page — no header */}
-      <Route path="/" element={<UploadData />} />
-
-      {/* All other pages get the persistent header */}
-      <Route element={<LayoutWithHeader />}>
-        <Route path="/reel-canvas" element={<ReelCanvas />} />
-        <Route path="/design" element={<DesignPreview />} />
-        <Route path="/frame-preview" element={<FramePreview />} />
-      </Route>
-    </Routes>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#000',
+      color: '#DAC477',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: 'Garamond, serif',
+      gap: '16px'
+    }}>
+      <h1 style={{ fontSize: '2rem', margin: 0 }}>StarryVibes</h1>
+      <p style={{ color: '#aaa', margin: 0 }}>Run <code style={{ color: '#DAC477' }}>npm run remotion:preview</code> to open the studio.</p>
+    </div>
   )
 }
 

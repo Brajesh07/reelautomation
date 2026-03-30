@@ -7,23 +7,19 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "export": "node scripts/export.js",
-    "export:manual": "node scripts/export-manual.js && open output/export.html",
-    "export:ffmpeg": "node scripts/export-ffmpeg.js"
+    "remotion:preview": "remotion preview remotion.index.jsx",
+    "remotion:render": "remotion render remotion.index.jsx AstrologyReel out/video.mp4"
   },
   "dependencies": {
-    "gsap": "^3.12.5",
+    "@remotion/cli": "^4.0.435",
+    "@remotion/player": "^4.0.435",
+    "@remotion/renderer": "^4.0.435",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^7.13.0"
+    "remotion": "^4.0.435"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.0.0",
     "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.24",
-    "postcss": "^8.5.6",
-    "puppeteer": "^21.9.0",
-    "tailwindcss": "^3.4.19",
     "vite": "^5.0.8"
   }
 }
