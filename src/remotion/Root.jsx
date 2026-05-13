@@ -1,5 +1,6 @@
 import { Composition, staticFile } from 'remotion';
 import { Main } from './Main';
+import { MainSingle } from '../remotion-single/MainSingle';
 import data from '../../public/data.json';
 
 // Keep in sync with ZODIAC_SEQUENCE_DURATION in Main.jsx and PHASES.EXIT.end in ZodiacSegment.jsx
@@ -21,6 +22,17 @@ export const RemotionRoot = () => {
         height={1920}
         defaultProps={{
           zodiacs: data.zodiacs,
+        }}
+      />
+      <Composition
+        id="SingleZodiacReel"
+        component={MainSingle}
+        durationInFrames={700}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          zodiac: data.zodiacs[0],
         }}
       />
     </>
