@@ -8,61 +8,92 @@ export default defineConfig({
   plugins: [
     react(),
     {
-      name: 'remotion-render-api',
+      name: 'remotion-api',
       configureServer(server) {
         server.middlewares.use(async (req, res, next) => {
-          if (req.method === 'POST' && req.url === '/api/render') {
-            let body = '';
-            req.on('data', chunk => {
-              body += chunk.toString();
-            });
+          const { method, url } = req;
 
-            req.on('end', async () => {
+          // 1. POST /api/render
+          if (method === 'POST' && url === '/api/render') {
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', () => {
               try {
                 const { zodiacs, date } = JSON.parse(body);
-                
-                // Ensure tmp directory exists
-                if (!fs.existsSync('./tmp')) {
-                  fs.mkdirSync('./tmp');
-                }
-
+                if (!fs.existsSync('./tmp')) fs.mkdirSync('./tmp');
                 const tmpPath = path.resolve('./tmp/tmp_input.json');
                 fs.writeFileSync(tmpPath, JSON.stringify(zodiacs));
 
                 console.log(`\n[API] Starting render for ${zodiacs.length} zodiacs...`);
-                
-                const renderProcess = spawn('node', [
-                  'src/remotion-single/renderAll.js',
-                  tmpPath,
-                  date
-                ], {
+                spawn('node', ['src/remotion-single/renderAll.js', tmpPath, date], {
                   stdio: 'inherit',
                   env: { ...process.env, NODE_ENV: 'production' }
-                });
-
-                renderProcess.on('close', (code) => {
-                  if (code === 0) {
-                    console.log(`[API] Render process completed successfully.`);
-                  } else {
-                    console.error(`[API] Render process failed with code ${code}.`);
-                  }
-                  // Cleanup tmp file
-                  if (fs.existsSync(tmpPath)) {
-                    fs.unlinkSync(tmpPath);
-                  }
+                }).on('close', () => {
+                  if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
                 });
 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ status: 'started' }));
               } catch (err) {
-                console.error('[API] Error handling render request:', err);
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Failed to start render' }));
+                res.writeHead(500).end(JSON.stringify({ error: err.message }));
               }
             });
-          } else {
-            next();
+            return;
           }
+
+          // 2. GET /api/videos
+          if (method === 'GET' && url === '/api/videos') {
+            const outDir = path.resolve('./out');
+            let videos = [];
+            if (fs.existsSync(outDir)) {
+              videos = fs.readdirSync(outDir).filter(f => f.endsWith('.mp4'));
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ videos }));
+            return;
+          }
+
+          // 3. GET /api/download/:filename
+          if (method === 'GET' && url.startsWith('/api/download/')) {
+            const filename = url.replace('/api/download/', '');
+            const filePath = path.resolve('./out', filename);
+            if (fs.existsSync(filePath)) {
+              res.writeHead(200, {
+                'Content-Type': 'video/mp4',
+                'Content-Disposition': `attachment; filename="${filename}"`
+              });
+              fs.createReadStream(filePath).pipe(res);
+            } else {
+              res.writeHead(404).end('Not Found');
+            }
+            return;
+          }
+
+          // 4. DELETE /api/delete
+          if (method === 'DELETE' && url === '/api/delete') {
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', () => {
+              try {
+                const { filenames } = JSON.parse(body);
+                const deleted = [];
+                filenames.forEach(f => {
+                  const p = path.resolve('./out', f);
+                  if (fs.existsSync(p)) {
+                    fs.unlinkSync(p);
+                    deleted.push(f);
+                  }
+                });
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ deleted, failed: [] }));
+              } catch (err) {
+                res.writeHead(500).end(JSON.stringify({ error: err.message }));
+              }
+            });
+            return;
+          }
+
+          next();
         });
       }
     }

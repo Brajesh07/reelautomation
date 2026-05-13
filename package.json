@@ -17,8 +17,11 @@
     "@remotion/cli": "^4.0.435",
     "@remotion/player": "^4.0.435",
     "@remotion/renderer": "^4.0.435",
+    "file-saver": "2.0.5",
+    "jszip": "3.10.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "7.15.0",
     "remotion": "^4.0.435"
   },
   "devDependencies": {

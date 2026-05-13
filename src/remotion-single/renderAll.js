@@ -16,7 +16,7 @@ const main = async () => {
   try {
     const rawData = fs.readFileSync(jsonPath, "utf-8");
     const parsedData = JSON.parse(rawData);
-    zodiacs = Array.isArray(parsedData) ? parsedData : parsedData.zodiacs;
+    zodiacs = Array.isArray(parsedData) ? parsedData : (parsedData.zodiacs || []);
   } catch (err) {
     console.error("Failed to parse JSON input:", err);
     process.exit(1);
@@ -56,13 +56,13 @@ const main = async () => {
         inputProps: { zodiac },
       });
 
-      console.log(`✅ ${filename}`);
+      console.log(`✅ ${filename} done`);
     } catch (err) {
       console.error(`❌ Failed to render ${zodiac.name}:`, err);
     }
   }
 
-  console.log("\nBatch render complete!");
+  console.log("🎉 All renders complete");
 };
 
 main().catch((err) => {
