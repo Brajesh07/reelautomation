@@ -8,7 +8,7 @@ CanvaReel/
 │   └── data.json               ← All video content (zodiac readings)
 │
 ├── src/
-│   ├── remotion/               ← Everything Remotion touches
+│   ├── remotion/               ← Main multi-zodiac video components
 │   │   ├── Root.jsx            ← Composition registration + total duration calc
 │   │   ├── Main.jsx            ← Series orchestrator — stitches all sequences
 │   │   ├── IntroSegment.jsx    ← Intro scene (240 frames)
@@ -19,20 +19,18 @@ CanvaReel/
 │   │   ├── assets.js           ← ZODIAC_IMAGES map (name → imported PNG)
 │   │   └── theme.js            ← Design tokens (colours, fonts, spacing)
 │   │
-│   ├── frames/                 ← Canvas-based frame renderers (legacy / export path)
-│   │   ├── IntroFrame.js
-│   │   ├── ZodiacFrame.js
-│   │   ├── OutroFrame.js
-│   │   └── DraftFrame.js
+│   ├── remotion-single/        ← Components for individual zodiac reels
+│   │   ├── RootSingle.jsx      ← Legacy / alternative root
+│   │   ├── MainSingle.jsx      ← Single-zodiac series orchestrator
+│   │   ├── IntroSingle.jsx     ← Intro scene for single mode
+│   │   ├── ZodiacSingleSegment.jsx ← Main scene for single mode
+│   │   ├── OutroSingle.jsx     ← Outro scene for single mode
+│   │   └── renderAll.js        ← Batch render script for individual reels
 │   │
 │   ├── images/                 ← All PNG assets (zodiac icons + decorative)
 │   ├── fonts/                  ← Custom font files
-│   ├── components/             ← Shared React UI components (non-Remotion)
-│   ├── pages/                  ← Vite app pages (preview / upload tools)
-│   ├── utils/                  ← Utility helpers (date formatting etc.)
-│   ├── context/                ← React context providers
-│   ├── App.jsx
-│   ├── main.jsx
+│   ├── App.jsx                 ← Minimal Vite preview landing
+│   ├── main.jsx                ← Vite entry point
 │   └── index.css
 │
 ├── remotion.index.jsx          ← Remotion entry point (registers Root)
@@ -45,22 +43,34 @@ CanvaReel/
 
 ## Component Tree
 
+### Path A: Full Astrology Reel (`AstrologyReel`)
 ```
-RemotionRoot  (Root.jsx)
+RemotionRoot (Root.jsx)
 └── Composition "AstrologyReel"
-    └── Main  (Main.jsx)
+    └── Main (Main.jsx)
         └── Series
             ├── Series.Sequence [240]
             │   └── IntroSegment
-            │       └── ZodiacRing          ← shared ring component
+            │       └── ZodiacRing
             │
-            ├── Series.Sequence [340] × N   (one per zodiac in data.json)
+            ├── Series.Sequence [340] × N (one per zodiac in data.json)
             │   └── ZodiacSegment
-            │       └── ZodiacSection × 4   ← LOVE / CAREER / MONEY / SOUL
+            │       └── ZodiacSection × 4
             │
             └── Series.Sequence [120]
                 └── OutroSegment
-                    └── ZodiacRing          ← same shared ring component
+                    └── ZodiacRing
+```
+
+### Path B: Individual Zodiac Reel (`SingleZodiacReel`)
+```
+RemotionRoot (Root.jsx)
+└── Composition "SingleZodiacReel"
+    └── MainSingle (MainSingle.jsx)
+        └── Series
+            ├── Series.Sequence [240] → IntroSingle
+            ├── Series.Sequence [340] → ZodiacSingleSegment
+            └── Series.Sequence [120] → OutroSingle
 ```
 
 ---
@@ -71,22 +81,20 @@ RemotionRoot  (Root.jsx)
 public/data.json
       │
       ▼
-Root.jsx  (imports JSON at build time via ES import)
-      │   computes totalDuration
-      ▼
-Composition defaultProps → { zodiacs: [...] }
+Root.jsx (imports JSON at build time)
+      │
+      ├─── AstrologyReel → { zodiacs: [...] }
+      └─── SingleZodiacReel → { zodiac: data.zodiacs[0] } (default)
       │
       ▼
-Main.jsx  receives zodiacs[]
-      │   maps → one ZodiacSegment per entry
-      ▼
-ZodiacSegment  receives { name, vibe, zodiacData }
+Main.jsx / MainSingle.jsx
       │
-      ├── ZODIAC_IMAGES[name]   → icon PNG  (assets.js)
-      └── zodiacData.love / .career / .money / .soulMessage → ZodiacSection props
+      ▼
+Segments (Intro / Zodiac / Outro)
 ```
 
 No runtime fetch. No state management. No context. Everything is pure props and frame-derived values.
+Batch rendering individual reels is handled by `src/remotion-single/renderAll.js`, which passes specific props to each render command.
 
 ---
 

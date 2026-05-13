@@ -33,10 +33,13 @@ The output is a production-ready MP4 reel, rendered entirely in code — no manu
 npm install
 
 # Open Remotion Studio (live preview with scrubbing)
-npm run preview
+npm run remotion:preview
 
-# Render to MP4
-npx remotion render src/remotion/index.jsx AstrologyReel out/video.mp4
+# Render the full combined MP4
+npm run remotion:render
+
+# Batch render individual zodiac reels
+node src/remotion-single/renderAll.js
 ```
 
 ---

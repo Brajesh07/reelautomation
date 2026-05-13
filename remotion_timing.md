@@ -23,6 +23,18 @@ Formula: `240 + (N × 340) + 120` where N = number of zodiacs in `data.json`.
 
 ---
 
+## SingleZodiacReel Timeline
+
+**Total Duration: 700 frames | 23.33 seconds**
+
+| Segment             | Frames  | Time           |
+| ------------------- | ------- | -------------- |
+| IntroSingle         | 0 - 239 | 0.0s - 8.0s    |
+| ZodiacSingleSegment | 240-579 | 8.0s - 19.33s  |
+| OutroSingle         | 580-699 | 19.33s - 23.3s |
+
+---
+
 ## IntroSegment Internal Phases
 
 **Sequence duration: 240 frames | 8.0 seconds**

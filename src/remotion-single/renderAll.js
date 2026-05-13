@@ -1,44 +1,71 @@
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { bundle } from "@remotion/bundler";
+import { renderMedia, selectComposition } from "@remotion/renderer";
+import path from "path";
+import fs from "fs";
 
-// Load data.json
-const dataPath = path.join(__dirname, '../../public/data.json');
-const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+const main = async () => {
+  const jsonPath = process.argv[2];
+  const dateStr = process.argv[3] || new Date().toISOString().split('T')[0];
 
-const outDir = path.join(__dirname, '../../out');
-if (!fs.existsSync(outDir)) {
-  fs.mkdirSync(outDir, { recursive: true });
-}
-
-console.log(`Found ${data.zodiacs.length} zodiacs. Starting batch render...\n`);
-
-data.zodiacs.forEach((zodiac) => {
-  const sanitizedName = zodiac.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const filename = `${sanitizedName}.mp4`;
-  const outputPath = path.join(outDir, filename);
-  
-  // Create props object for the individual zodiac
-  const inputProps = JSON.stringify({ zodiac });
-
-  console.log(`-----------------------------------------`);
-  console.log(`Rendering ${zodiac.name}...`);
-  
-  try {
-    // Run remotion render command
-    // We run it from the root directory
-    execSync(
-      `npx remotion render remotion.index.jsx SingleZodiacReel ${outputPath} --props='${inputProps.replace(/'/g, "'\\''")}'`,
-      { 
-        stdio: 'inherit',
-        cwd: path.join(__dirname, '../../')
-      }
-    );
-    console.log(`\nDone → out/${filename}\n`);
-  } catch (error) {
-    console.error(`\nFailed to render ${zodiac.name}\n`);
+  if (!jsonPath) {
+    console.error("Usage: node renderAll.js <json-path> [date-string]");
+    process.exit(1);
   }
-});
 
-console.log(`-----------------------------------------`);
-console.log(`Batch render complete! Files are in the 'out/' directory.`);
+  let zodiacs;
+  try {
+    const rawData = fs.readFileSync(jsonPath, "utf-8");
+    const parsedData = JSON.parse(rawData);
+    zodiacs = Array.isArray(parsedData) ? parsedData : parsedData.zodiacs;
+  } catch (err) {
+    console.error("Failed to parse JSON input:", err);
+    process.exit(1);
+  }
+
+  const outDir = path.resolve("./out");
+  if (!fs.existsSync(outDir)) {
+    fs.mkdirSync(outDir, { recursive: true });
+  }
+
+  console.log(`Found ${zodiacs.length} zodiacs. Bundling project...`);
+  
+  const bundleLocation = await bundle({
+    entryPoint: path.resolve("./remotion.index.jsx"),
+    // If you have specific webpack overrides, add them here
+  });
+
+  for (const zodiac of zodiacs) {
+    const compositionId = "SingleZodiacReel";
+    const filename = `${zodiac.name}_${dateStr}.mp4`;
+    const outputPath = path.join(outDir, filename);
+
+    console.log(`Rendering ${zodiac.name}...`);
+
+    try {
+      const composition = await selectComposition({
+        serveUrl: bundleLocation,
+        id: compositionId,
+        inputProps: { zodiac },
+      });
+
+      await renderMedia({
+        composition,
+        serveUrl: bundleLocation,
+        codec: "h264",
+        outputLocation: outputPath,
+        inputProps: { zodiac },
+      });
+
+      console.log(`✅ ${filename}`);
+    } catch (err) {
+      console.error(`❌ Failed to render ${zodiac.name}:`, err);
+    }
+  }
+
+  console.log("\nBatch render complete!");
+};
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

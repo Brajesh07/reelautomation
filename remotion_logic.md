@@ -124,6 +124,18 @@ const PHASES = {
 
 ---
 
+## Single Reel Logic (`SingleZodiacReel`)
+
+In addition to the main combined reel, the project supports rendering individual 3-scene reels for each zodiac sign.
+
+- **Component:** `MainSingle.jsx`
+- **Structure:** IntroSingle → ZodiacSingleSegment → OutroSingle
+- **Duration:** Fixed at 700 frames (240 + 340 + 120).
+- **Highlights:** In `IntroSingle`, only the specific zodiac being rendered is highlighted in the `ZodiacRing` (non-highlight opacity is reduced to 0.2 for greater emphasis).
+- **Batch Rendering:** `src/remotion-single/renderAll.js` automates the export of one MP4 per zodiac entry in `data.json`.
+
+---
+
 ## ZodiacSegment — Phase Breakdown
 
 **Total: 340 frames (~11.3 seconds) — one segment, repeated per zodiac**

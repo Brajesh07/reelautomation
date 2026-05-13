@@ -1,16 +1,19 @@
 {
   "name": "astrology-reel-automation",
   "version": "1.0.0",
+  "type": "module",
   "description": "Data-driven animated reel system for daily astrology reels",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "remotion:preview": "remotion preview remotion.index.jsx",
-    "remotion:render": "remotion render remotion.index.jsx AstrologyReel out/video.mp4"
+    "remotion:preview": "remotion studio remotion.index.jsx",
+    "remotion:render": "remotion render remotion.index.jsx AstrologyReel out/video.mp4",
+    "remotion:render:all": "node src/remotion-single/renderAll.js"
   },
   "dependencies": {
+    "@remotion/bundler": "4.0.460",
     "@remotion/cli": "^4.0.435",
     "@remotion/player": "^4.0.435",
     "@remotion/renderer": "^4.0.435",
