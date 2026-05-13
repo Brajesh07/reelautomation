@@ -10,6 +10,7 @@ export default defineConfig({
     {
       name: 'remotion-api',
       configureServer(server) {
+        server.httpServer?.setTimeout(0);
         server.middlewares.use(async (req, res, next) => {
           const { method, url } = req;
 
@@ -25,15 +26,31 @@ export default defineConfig({
                 fs.writeFileSync(tmpPath, JSON.stringify(zodiacs));
 
                 console.log(`\n[API] Starting render for ${zodiacs.length} zodiacs...`);
-                spawn('node', ['src/remotion-single/renderAll.js', tmpPath, date], {
+                const proc = spawn('node', ['src/remotion-single/renderAll.js', tmpPath, date], {
                   stdio: 'inherit',
                   env: { ...process.env, NODE_ENV: 'production' }
-                }).on('close', () => {
-                  if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
                 });
 
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ status: 'started' }));
+                proc.on('close', (code) => {
+                  if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+                  
+                  const outDir = path.resolve('./out');
+                  const videos = fs.existsSync(outDir)
+                    ? fs.readdirSync(outDir).filter((f) => f.endsWith('.mp4'))
+                    : [];
+
+                  res.writeHead(200, { 'Content-Type': 'application/json' });
+                  if (code === 0) {
+                    res.end(JSON.stringify({ status: 'done', videos }));
+                  } else {
+                    res.end(JSON.stringify({ status: 'error', videos }));
+                  }
+                });
+
+                proc.on('error', (err) => {
+                  res.writeHead(500, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({ status: 'error', message: err.message }));
+                });
               } catch (err) {
                 res.writeHead(500).end(JSON.stringify({ error: err.message }));
               }

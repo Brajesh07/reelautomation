@@ -54,14 +54,16 @@ export default function Home() {
       if (!response.ok) throw new Error('Render request failed')
       
       const data = await response.json()
-      if (data.status === 'started') {
+      if (data.status === 'done') {
         setStatus('done')
       } else {
-        throw new Error('Unexpected response from server')
+        setStatus('error')
+        throw new Error('Render process exited with error')
       }
     } catch (err) {
       console.error(err)
       setStatus('error')
+      setError(err.message)
     }
   }
 
@@ -136,8 +138,8 @@ export default function Home() {
             onClick={handleRender}
             disabled={zodiacs.length === 0 || status === 'rendering'}
             style={{
-              backgroundColor: status === 'rendering' ? '#333' : (status === 'done' ? '#222' : '#DAC477'),
-              color: (status === 'rendering' || status === 'done') ? '#888' : '#000',
+              backgroundColor: status === 'rendering' ? '#333' : (status === 'error' ? '#ff4444' : (status === 'done' ? '#222' : '#DAC477')),
+              color: (status === 'rendering' || status === 'done' || status === 'error') ? '#888' : '#000',
               border: 'none',
               padding: '18px 32px',
               fontSize: '1.1rem',
@@ -151,12 +153,12 @@ export default function Home() {
             }}
           >
             {status === 'idle' && `Render All ${zodiacs.length} Videos`}
-            {status === 'rendering' && `⏳ Rendering... Check Terminal`}
-            {status === 'done' && `✅ Batch Started Successfully`}
-            {status === 'error' && `❌ Connection Failed`}
+            {status === 'rendering' && `⏳ Rendering ${zodiacs.length} videos... check terminal`}
+            {status === 'done' && `✅ All ${zodiacs.length} videos rendered!`}
+            {status === 'error' && `❌ Render failed. Check terminal.`}
           </button>
 
-          {(status === 'done' || status === 'idle') && (
+          {status === 'done' && (
             <button 
               onClick={() => navigate('/videos')}
               style={{
@@ -177,12 +179,31 @@ export default function Home() {
               🎬 View All Videos
             </button>
           )}
+
+          {status === 'error' && (
+             <button 
+             onClick={() => { setStatus('idle'); setError(null); }}
+             style={{
+               backgroundColor: 'transparent',
+               color: '#fff',
+               border: '1px solid #fff',
+               padding: '12px 24px',
+               fontSize: '1rem',
+               fontWeight: 'bold',
+               borderRadius: '8px',
+               cursor: 'pointer',
+               width: '100%'
+             }}
+           >
+             Retry
+           </button>
+          )}
         </div>
 
         {status === 'done' && (
           <div style={{ marginTop: '32px', textAlign: 'left', borderTop: '1px solid #222', paddingTop: '24px' }}>
             <p style={{ color: '#DAC477', marginBottom: '16px', fontWeight: 'bold' }}>Success!</p>
-            <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '16px' }}>The render process is running in the background. You can find your files in the <code>/out</code> folder:</p>
+            <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '16px' }}>All videos have been rendered and are ready in the <code>/out</code> folder:</p>
             <div style={{ backgroundColor: '#0a0a0a', padding: '16px', borderRadius: '6px', maxHeight: '150px', overflowY: 'auto' }}>
               <ul style={{ listStyle: 'none', padding: 0, color: '#666', fontSize: '0.85rem', fontFamily: 'monospace' }}>
                 {zodiacs.map(z => (
@@ -195,7 +216,7 @@ export default function Home() {
           </div>
         )}
       </div>
-      <p style={{ marginTop: '24px', color: '#444', fontSize: '0.8rem' }}>Vite Middleware Pipeline v1.0</p>
+      <p style={{ marginTop: '24px', color: '#444', fontSize: '0.8rem' }}>Vite Middleware Pipeline v1.1</p>
     </div>
   )
 }
