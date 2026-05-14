@@ -1,9 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import gsap from 'gsap'
-import { renderIntroFrame } from '../frames/IntroFrame'
-import { renderOutroFrame } from '../frames/OutroFrame'
-import { createZodiacTimeline, renderZodiacFrame } from '../frames/ZodiacFrame'
+import { renderIntroFrame } from './IntroFrame'
+import { renderOutroFrame } from './OutroFrame'
+import { createZodiacTimeline, renderZodiacFrame } from './ZodiacFrame'
 import { formatDate } from '../utils/dateFormatter'
 
 // Import Decorative Images

@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import gsap from 'gsap'
-import { renderIntroFrame } from '../frames/IntroFrame'
-import { renderDraftFrame } from '../frames/DraftFrame'
-import { renderOutroFrame } from '../frames/OutroFrame'
-import { createZodiacTimeline } from '../frames/ZodiacFrame'
+import { renderIntroFrame } from '../components/IntroFrame'
+import { renderDraftFrame } from '../components/DraftFrame'
+import { renderOutroFrame } from '../components/OutroFrame'
+import { createZodiacTimeline } from '../components/ZodiacFrame'
 import { formatDate } from '../utils/dateFormatter'
 
 // Import Images (Similar to DesignPreview, but we only need a subset for preview if optimized, 

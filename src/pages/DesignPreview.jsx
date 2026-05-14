@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import gsap from 'gsap'
-import { renderDraftFrame } from '../frames/DraftFrame'
-import { renderIntroFrame } from '../frames/IntroFrame'
-import { renderOutroFrame } from '../frames/OutroFrame'
+import { renderDraftFrame } from '../components/DraftFrame'
+import { renderIntroFrame } from '../components/IntroFrame'
+import { renderOutroFrame } from '../components/OutroFrame'
 import { formatDate } from '../utils/dateFormatter'
 
 import heart from '../images/heart.png'
