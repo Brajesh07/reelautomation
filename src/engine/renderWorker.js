@@ -482,7 +482,7 @@ async function renderSign(signData, current, total, fontConfig, dateStr) {
   const zodiacStr = signData.name.toUpperCase();
   const highlightedNames = [signData.name];
 
-  // ── Animation state objects (mirroring ReelCanvas.jsx exactly) ────────────
+  // ── Animation state objects ──────────────────────────────────────────────
   const introState = {
     scale: 0,
     rotation: -60,

@@ -10,11 +10,12 @@ CanvaReel/
 │   └── data.json          # Dynamic content data
 ├── src/
 │   ├── components/
-│   │   └── ReelCanvas.jsx # Main canvas component with GSAP timeline
-│   ├── frames/
 │   │   ├── IntroFrame.js  # Frame 1: Intro
 │   │   ├── ZodiacFrame.js # Frames 2-4: Zodiac cards
 │   │   └── OutroFrame.js  # Frame 5: Outro/CTA
+│   ├── engine/
+│   │   ├── renderSign.js  # Core render engine
+│   │   └── useRenderQueue.js # Rendering store
 │   ├── App.jsx
 │   ├── main.jsx
 │   └── index.css
@@ -52,9 +53,9 @@ Open http://localhost:5173 to access the application.
 
 ### Application Routes
 
-- **`/`** - Upload Data page: Upload custom JSON data or use default data
-- **`/reel-canvas`** - Main reel player with recording functionality
-- **`/design`** - Design preview with advanced multi-zodiac animations
+- **`/`** - Upload Data page: Upload custom JSON data and start rendering
+- **`/videos`** - View and download rendered MP4 videos
+- **`/design`** - Design preview with font adjustment tools
 - **`/frame-preview`** - Frame testing tool for individual frame types
 
 ## Editing Content
@@ -94,57 +95,11 @@ Edit `public/data.json` to change the default content:
 
 ## Exporting Video
 
-### Method 1: Browser Canvas Recording (Recommended ⭐)
-
-**The easiest way - records ONLY the canvas element at full 1080×1920 resolution:**
-
-1. **Start the dev server:**
-   ```bash
-   npm run dev
-   ```
-
-2. **Open http://localhost:5173/reel-canvas** in your browser
-
-3. **Click the "🎬 Start Recording" button** on the right side
-
-4. **Wait 76 seconds** - the animation plays and records automatically
-
-5. **Video downloads as WebM** - convert to MP4:
-   ```bash
-   ./scripts/convert-to-mp4.sh ~/Downloads/astrology-reel-*.webm
-   ```
-
-**Benefits:**
-- ✅ Records only the canvas (no UI, no screen clutter)
-- ✅ Perfect 1080×1920 resolution
-- ✅ No screen recording permissions needed
-- ✅ Works on any screen setup (single/multiple monitors)
-
-### Method 2: FFmpeg Screen Capture
-
-The easiest automated way to export your reel:
-
-```bash
-# 1. Make sure dev server is running
-npm run dev
-
-# 2. In a new terminal, run the FFmpeg export
-npm run export:ffmpeg
-```
-
-**Steps:**
-1. The script will prompt you to prepare
-2. Open http://localhost:5173/reel-canvas in your browser
-3. Position the browser window to show the canvas
-4. Press ENTER in the terminal
-5. Immediately refresh the browser to start the animation
-6. Recording captures for 76 seconds automatically
-7. Video saved to `output/astrology-reel.mp4`
-
-**Note:** On first run, macOS will ask for screen recording permission for Terminal.
-Go to: System Preferences → Privacy & Security → Screen Recording
-
-### Method 2: QuickTime Player (Manual)
+The modern export system runs directly in the browser using FFmpeg WASM:
+1. Navigate to the Home page (`/`)
+2. Upload your zodiac data JSON
+3. Click "Render All Videos"
+4. Once complete, navigate to "View All Videos" to download the MP4s as a ZIP or individually.
 
 ## Content Rules
 
@@ -179,9 +134,10 @@ Canvas uses Arial by default. To add custom fonts:
 
 ### Animation Duration
 
-Edit `src/components/ReelCanvas.jsx` to adjust timing:
-- Change `duration` values in GSAP timeline
-- Update `scripts/export.js` TOTAL_DURATION if needed
+Timing is managed by the GSAP timelines in the render engine:
+- Intro: 12 seconds
+- Zodiac: 20 seconds
+- Outro: 4 seconds
 
 ## Tech Stack
 
@@ -189,8 +145,7 @@ Edit `src/components/ReelCanvas.jsx` to adjust timing:
 - **Vite** - Build tool & dev server
 - **GSAP 3** - Animation timeline
 - **HTML5 Canvas** - Rendering engine
-- **Puppeteer** - Headless browser for capture
-- **FFmpeg** - Video encoding
+- **FFmpeg WASM** - In-browser video encoding
 
 ## Success Criteria ✓
 
@@ -198,26 +153,21 @@ Edit `src/components/ReelCanvas.jsx` to adjust timing:
 - [x] No After Effects required
 - [x] Canvas-based rendering
 - [x] GSAP timeline animations
-- [x] Auto-export to MP4
+- [x] Auto-export to MP4 in browser
 - [x] 9:16 vertical format (1080×1920)
-- [x] 70 seconds total duration
-- [x] Static/dynamic content separation
 
 ## Troubleshooting
 
 ### Video export fails
-- Ensure FFmpeg is installed: `ffmpeg -version`
-- Check dev server is running on http://localhost:5173
-- Verify `output/` directory has write permissions
+- Ensure FFmpeg WASM assets are loaded (check network tab)
+- Browser must support IndexedDB for temporary video storage
 
 ### Fonts look wrong
-- Canvas doesn't support web fonts by default
-- Use system fonts or load fonts programmatically
+- Check `localStorage` for `fontConfig`
+- Use the Design Preview to reset or adjust font sizes
 
 ### Animation timing is off
-- Check GSAP timeline in ReelCanvas.jsx
-- Verify total duration adds up to 70 seconds
-- Update TOTAL_DURATION in export.js if changed
+- Check GSAP timelines in `src/engine/renderSign.js`
 
 ## Future Enhancements
 

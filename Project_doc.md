@@ -18,10 +18,10 @@ Astrology Reel Automation (internally referred to as CanvaReel) is a high-perfor
 
 # Architecture
 The system follows a decoupled rendering architecture where the UI state management is separated from the graphics drawing logic:
-- **Controller Layer**: `ReelCanvas.jsx` acts as the primary orchestrator, loading assets, building the master GSAP timeline, and managing the recording lifecycle.
+- **Controller Layer**: The modern render engine (`src/engine/renderSign.js`) acts as the primary orchestrator, loading assets, building GSAP timelines, and managing the recording lifecycle using FFmpeg WASM.
 - **Animation Layer**: GSAP animates "proxy state" objects (not DOM elements) to track visual properties like opacity, scale, and text typewriter progress.
 - **Rendering Layer**: Pure JavaScript functions in `src/frames/` (e.g., `ZodiacFrame.js`) receive the current proxy state and perform raw `2d` context operations on the canvas.
-- **Data Flow**: JSON ingestion -> LocalStorage persistence -> React state -> GSAP Timeline -> Canvas Buffer -> MediaRecorder/Puppeteer Export.
+- **Data Flow**: JSON ingestion -> IndexedDB persistence -> React state -> GSAP Timeline -> Off-screen Canvas -> FFmpeg WASM Export.
 
 # Current state
 **Working:**

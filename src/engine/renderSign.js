@@ -105,7 +105,7 @@ export async function renderSign(signData, onProgress) {
   canvas.height = 1920;
   const ctx = canvas.getContext("2d");
 
-  // 3. Read font config (same as ReelCanvas)
+  // 3. Read font config
   let fontConfig = {};
   try {
     const saved = localStorage.getItem("fontConfig");
@@ -119,7 +119,7 @@ export async function renderSign(signData, onProgress) {
   const highlightedNames = [signData.name];
   const zodiacStr = signData.name.toUpperCase();
 
-  // 4. Animation state objects (mirroring ReelCanvas.jsx exactly)
+  // 4. Animation state objects
   const introAnimState = {
     scale: 0,
     rotation: -60,
@@ -181,7 +181,7 @@ export async function renderSign(signData, onProgress) {
     );
   };
 
-  // 5. Build GSAP timeline (paused) — identical structure to ReelCanvas.jsx
+  // 5. Build GSAP timeline (paused)
   const tl = gsap.timeline({ paused: true });
 
   // --- Intro ---

@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 
 const navLinks = [
-    { label: 'Reel Canvas', to: '/reel-canvas' },
     { label: 'Design', to: '/design' },
     { label: 'Frame Preview', to: '/frame-preview' },
 ]

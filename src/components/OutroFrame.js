@@ -14,7 +14,7 @@ export const renderOutroFrame = (ctx, data = {}, fontSizes = {}) => {
     rotation = 0,
     text1 = '',
     boxWidth = 0,
-    images = [] // Use images passed from ReelCanvas
+    images = [] // Array of zodiac icon images
   } = data
 
   // Clear canvas

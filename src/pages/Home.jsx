@@ -101,9 +101,9 @@ export default function Home() {
   const currentSign = signsData[currentRenderIndex];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6">
-      <div className="max-w-md w-full bg-gray-800 rounded-lg shadow-xl p-8 border border-gray-700">
-        <h1 className="text-3xl font-bold mb-6 text-center text-yellow-500">CanvaReel</h1>
+    <div className="min-h-screen bg-[#1a1a1a] text-white flex flex-col items-center justify-center p-6">
+      <div className="max-w-md w-full bg-[#111] rounded-2xl shadow-2xl p-8 border border-white/10">
+        <h1 className="text-3xl font-bold mb-6 text-center text-[#DAC477]">CanvaReel</h1>
         
         {/* Upload State */}
         {!isRendering && (!isComplete || renderedVideos.length === 0) && (
@@ -111,7 +111,7 @@ export default function Home() {
             <div className="text-center">
               <button
                 onClick={downloadSample}
-                className="text-xs text-yellow-500 hover:text-yellow-400 underline transition-colors"
+                className="text-xs text-[#DAC477] hover:text-[#DAC477]/80 underline transition-colors"
               >
                 ⬇️ Download Sample JSON
               </button>
@@ -119,7 +119,7 @@ export default function Home() {
 
             <div 
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-600 rounded-xl p-8 text-center cursor-pointer hover:border-yellow-500 transition-colors bg-gray-750"
+              className="border-2 border-dashed border-white/10 rounded-xl p-8 text-center cursor-pointer hover:border-[#DAC477] transition-colors bg-white/5"
             >
               <p className="text-gray-400">Click to upload zodiac data JSON</p>
               <input 
@@ -132,19 +132,19 @@ export default function Home() {
             </div>
             
             {error && (
-              <div className="bg-red-900/50 text-red-200 border border-red-500/50 rounded p-3 text-sm">
+              <div className="bg-red-900/30 text-red-200 border border-red-500/30 rounded-lg p-3 text-sm">
                 {error}
               </div>
             )}
             
             {signsData.length > 0 && !error && (
               <div className="space-y-4">
-                <p className="text-sm text-gray-300 text-center">
+                <p className="text-sm text-gray-400 text-center">
                   {signsData.length} signs loaded: {signsData.map(s => s.name).join(', ')}
                 </p>
                 <button 
                   onClick={() => startRendering(navigate)}
-                  className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 rounded-xl transition-all shadow-lg"
+                  className="w-full bg-[#DAC477] hover:bg-[#DAC477]/90 text-black font-bold py-3 rounded-xl transition-all shadow-lg"
                 >
                   Render All {signsData.length} Videos
                 </button>
@@ -157,7 +157,7 @@ export default function Home() {
         {isRendering && (
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <p className="text-lg font-bold text-yellow-400">
+              <p className="text-lg font-bold text-[#DAC477]">
                 Rendering {currentSign?.name} ({currentRenderIndex + 1} of {signsData.length})
               </p>
               <p className="text-sm text-gray-400">
@@ -165,9 +165,9 @@ export default function Home() {
               </p>
             </div>
             
-            <div className="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
+            <div className="w-full bg-white/5 rounded-full h-4 overflow-hidden border border-white/10">
               <div 
-                className="bg-yellow-500 h-full transition-all duration-300 ease-out" 
+                className="bg-[#DAC477] h-full transition-all duration-300 ease-out" 
                 style={{ width: `${progress.percent}%` }}
               />
             </div>
@@ -183,9 +183,9 @@ export default function Home() {
             <div className="text-5xl mb-4">✅</div>
             <h2 className="text-2xl font-bold text-green-400">All {renderedVideos.length} videos rendered!</h2>
             
-            <div className="bg-gray-900 rounded p-4 max-h-48 overflow-y-auto text-left space-y-2 border border-gray-700">
+            <div className="bg-black/40 rounded-xl p-4 max-h-48 overflow-y-auto text-left space-y-2 border border-white/10">
               {renderedVideos.map(v => (
-                <div key={v.filename} className="text-xs text-gray-300 font-mono">
+                <div key={v.filename} className="text-xs text-gray-400 font-mono">
                   {v.filename}
                 </div>
               ))}
@@ -202,9 +202,8 @@ export default function Home() {
 
         {/* Navigation Links */}
         {!isRendering && (
-          <div className="mt-8 pt-6 border-t border-gray-700 flex justify-center gap-6">
-            <a href="/reel-canvas" className="text-xs text-gray-500 hover:text-yellow-500 transition-colors">Reel Canvas</a>
-            <a href="/frame-preview" className="text-xs text-gray-500 hover:text-yellow-500 transition-colors">Frame Preview</a>
+          <div className="mt-8 pt-6 border-t border-white/10 flex justify-center gap-6">
+            <a href="/frame-preview" className="text-xs text-gray-500 hover:text-[#DAC477] transition-colors">Frame Preview</a>
           </div>
         )}
       </div>
@@ -212,7 +211,7 @@ export default function Home() {
       {/* In-App Toast Fallback */}
       {showToast && (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 animate-bounce">
-          <div className="bg-yellow-500 text-black px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border-2 border-yellow-400">
+          <div className="bg-[#DAC477] text-black px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-[#DAC477]/50">
             <span className="font-bold text-lg">✅ All {renderedVideos.length} videos are ready!</span>
             <button 
               onClick={() => navigate('/videos')}
