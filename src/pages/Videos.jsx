@@ -65,8 +65,7 @@ export default function Videos() {
     );
     try {
       await downloadZip(videosToDownload);
-      // Delete from store + IndexedDB after successful download
-      videosToDownload.forEach((v) => deleteVideo(v.filename));
+      // Clear selection after successful download
       setSelectedVideos(new Set());
     } catch (error) {
       alert("Failed to create ZIP.");
