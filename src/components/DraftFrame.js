@@ -95,46 +95,49 @@ export const renderDraftFrame = (ctx, data = {}, fontSizes = {}) => {
         // Apply text block opacity
         ctx.globalAlpha = textOpacity
 
+        const _titleSize = fontSizes.titleText ?? 42
+        const _titleLH = fontSizes.titleTextLH ?? 1.4
+        const spacingY = _titleSize * _titleLH
+
         ctx.fillStyle = '#ffffff'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
 
         // Font settings - using a system font stack that looks decent
         // In a real app we'd load a specific font
-        const baseFont = 'bold 32px "Garamond", sans-serif'
-        const titleFont = 'bold 42px "Garamond", sans-serif'
+        // const baseFont = 'bold 32px "Garamond", sans-serif'
+        // const titleFont = 'bold 42px "Garamond", sans-serif'
 
         // Vertical spacing
         const startY = centerY - 120 // Shift up to center the 5-line block (middle line at centerY)
-        const lineHeight = 50
 
         // Draw each line if it has content
 
         // DAILY
-        ctx.font = 'bold 42px "Garamond", sans-serif'
+        ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
         ctx.fillStyle = '#DAC477'
         ctx.fillText(line1, centerX, startY)
 
         // HOROSCOPE
-        ctx.font = 'bold 42px "Garamond", sans-serif' // Big impact
+        ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
         ctx.fillStyle = '#DAC477'
-        ctx.fillText(line2, centerX, startY + 60)
+        ctx.fillText(line2, centerX, startY + spacingY)
 
         // FOR
-        ctx.font = 'bold 42px "Garamond", sans-serif' // Small connector
+        ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
         ctx.fillStyle = '#DAC477'
-        ctx.fillText(line3, centerX, startY + 120)
+        ctx.fillText(line3, centerX, startY + spacingY * 2)
 
         // ZODIAC NAMES (Highlight color)
-        ctx.font = 'bold 42px "Garamond", sans-serif'
+        ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
         ctx.fillStyle = '#DAC477'
         // Use a max width to prevent overflow if names are long
-        ctx.fillText(line4, centerX, startY + 180, 600)
+        ctx.fillText(line4, centerX, startY + spacingY * 3, 600)
 
         // DATE
-        ctx.font = 'bold 42px "Garamond", sans-serif'
+        ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
         ctx.fillStyle = '#DAC477'
-        ctx.fillText(line5, centerX, startY + 240)
+        ctx.fillText(line5, centerX, startY + spacingY * 4)
 
         ctx.restore()
     }
@@ -242,11 +245,13 @@ export const renderDraftFrame = (ctx, data = {}, fontSizes = {}) => {
     if (showVibe && vibeText) {
         const vibeY = 400 // Increased from 300 to add more space above vibe text
         const vibeMaxWidth = 900 // Maximum width for text wrapping
-        const vibeLineHeight = 50 // Line height for multi-line text
+        const vibeFontSize = _fs.vibe ?? 36
+        const vibeLH = _fs.vibeLH ?? 1.4
+        const vibeLineHeight = vibeFontSize * vibeLH // Line height for multi-line text
 
         ctx.save()
         ctx.fillStyle = '#FFFFFF'
-        ctx.font = `${_fs.vibe ?? 36}px "Garamond", serif`
+        ctx.font = `${vibeFontSize}px "Garamond", serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
 
@@ -289,7 +294,9 @@ export const renderDraftFrame = (ctx, data = {}, fontSizes = {}) => {
         const boxWidth = 900
         const vertPadding = 30
         const horizPadding = 60
-        const lineHeight = 44
+        const boxFontSize = _fs.boxContent ?? 32
+        const boxLH = _fs.boxContentLH ?? 1.4
+        const lineHeight = boxFontSize * boxLH
         const titleHeight = 50 // Space for title
         const titleMargin = 30 // Space between title and box
 
@@ -313,7 +320,7 @@ export const renderDraftFrame = (ctx, data = {}, fontSizes = {}) => {
             ctx.save()
 
             // Text Setup for measurement
-            ctx.font = `500 ${_fs.boxContent ?? 32}px "Garamond", serif`
+            ctx.font = `500 ${boxFontSize}px "Garamond", serif`
 
             // Text Wrapping Calculation
             const words = text.split(' ')
@@ -321,15 +328,6 @@ export const renderDraftFrame = (ctx, data = {}, fontSizes = {}) => {
             let currentLine = ''
 
             words.forEach(word => {
-                // Handle newlines explicitly if text contains them
-                const wordParts = word.split('\n')
-                if (wordParts.length > 1) {
-                    // This simple split by space doesn't handle embedded newlines perfectly if we don't pre-process
-                    // But for now assuming space-separated words or relying on simple wrapping.
-                    // If the text comes with newlines, we might want to respect them.
-                    // Let's stick to auto-wrapping for consistency with previous implementation.
-                }
-
                 const testLine = currentLine ? currentLine + ' ' + word : word
                 if (ctx.measureText(testLine).width > boxWidth - horizPadding * 1.5) {
                     lines.push(currentLine)
@@ -365,11 +363,8 @@ export const renderDraftFrame = (ctx, data = {}, fontSizes = {}) => {
             ctx.restore()
         } else {
             // Calculate height even if not showing content yet to reserve space or animate layout if needed?
-            // For now, if content isn't shown, height effectively depends on if we want to reserve it.
-            // But simpler to just recalc height for layout purposes if we want to stack them purely dynamically.
-            // Given the animation flow, likely we want to base this on the text content always.
             ctx.save()
-            ctx.font = `500 ${_fs.boxContent ?? 32}px "Garamond", serif`
+            ctx.font = `500 ${boxFontSize}px "Garamond", serif`
             const words = text.split(' ')
             let lines = []
             let currentLine = ''

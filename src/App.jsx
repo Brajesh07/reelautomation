@@ -1,25 +1,22 @@
-import React from 'react'
-import { Routes, Route } from 'react-router-dom'
-import ReelCanvas from './components/ReelCanvas'
-import DesignPreview from './pages/DesignPreview'
-import FramePreview from './pages/FramePreview'
-import UploadData from './pages/UploadData'
-import LayoutWithHeader from './components/LayoutWithHeader'
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import Videos from "./pages/Videos";
+import LayoutWithHeader from "./components/LayoutWithHeader";
+import DesignPreview from "./pages/DesignPreview";
+import FramePreview from "./pages/FramePreview";
 
 function App() {
   return (
     <Routes>
-      {/* Upload page — no header */}
-      <Route path="/" element={<UploadData />} />
-
-      {/* All other pages get the persistent header */}
+      <Route path="/" element={<Home />} />
+      <Route path="/videos" element={<Videos />} />
       <Route element={<LayoutWithHeader />}>
-        <Route path="/reel-canvas" element={<ReelCanvas />} />
         <Route path="/design" element={<DesignPreview />} />
         <Route path="/frame-preview" element={<FramePreview />} />
       </Route>
     </Routes>
-  )
+  );
 }
 
-export default App
+export default App;

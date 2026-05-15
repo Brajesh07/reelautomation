@@ -5,6 +5,9 @@
  */
 export const renderIntroFrame = (ctx, data = {}, fontSizes = {}) => {
   const _titleSize = fontSizes.titleText ?? 42
+  const _titleLH = fontSizes.titleTextLH ?? 1.4
+  const spacingY = _titleSize * _titleLH
+  
   const width = ctx.canvas.width
   const height = ctx.canvas.height
   const centerX = width / 2
@@ -110,22 +113,22 @@ export const renderIntroFrame = (ctx, data = {}, fontSizes = {}) => {
     // HOROSCOPE
     ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
     ctx.fillStyle = '#DAC477'
-    ctx.fillText(line2, centerX, startY + 60)
+    ctx.fillText(line2, centerX, startY + spacingY)
 
     // FOR
     ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
     ctx.fillStyle = '#DAC477'
-    ctx.fillText(line3, centerX, startY + 120)
+    ctx.fillText(line3, centerX, startY + spacingY * 2)
 
     // ZODIAC NAMES (Highlight color)
     ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
     ctx.fillStyle = '#DAC477'
-    ctx.fillText(line4, centerX, startY + 180, 600)
+    ctx.fillText(line4, centerX, startY + spacingY * 3, 600)
 
     // DATE
     ctx.font = `bold ${_titleSize}px "Garamond", sans-serif`
     ctx.fillStyle = '#DAC477'
-    ctx.fillText(line5, centerX, startY + 240)
+    ctx.fillText(line5, centerX, startY + spacingY * 4)
 
     ctx.restore()
   }

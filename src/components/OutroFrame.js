@@ -14,7 +14,7 @@ export const renderOutroFrame = (ctx, data = {}, fontSizes = {}) => {
     rotation = 0,
     text1 = '',
     boxWidth = 0,
-    images = [] // Use images passed from ReelCanvas
+    images = [] // Array of zodiac icon images
   } = data
 
   // Clear canvas
@@ -70,8 +70,12 @@ export const renderOutroFrame = (ctx, data = {}, fontSizes = {}) => {
     ctx.save()
     // Apply text block opacity (matches IntroFrame textOpacity logic if needed, but here text1 clears on exit anyway)
 
+    const _labelSize = fontSizes.sectionLabel ?? 42
+    const _labelLH = fontSizes.sectionLabelLH ?? 1.4
+    const labelSpacingY = _labelSize * _labelLH
+
     ctx.fillStyle = '#DAC477'
-    ctx.font = `bold ${fontSizes.sectionLabel ?? 42}px "Garamond", sans-serif`
+    ctx.font = `bold ${_labelSize}px "Garamond", sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
 
@@ -99,7 +103,7 @@ export const renderOutroFrame = (ctx, data = {}, fontSizes = {}) => {
 
     ctx.fillText(currentLine1, centerX, startY)
     if (currentLine2) {
-      ctx.fillText(currentLine2, centerX, startY + 60) // 60px line height
+      ctx.fillText(currentLine2, centerX, startY + labelSpacingY) // Dynamic line height
     }
 
     ctx.restore()
@@ -112,11 +116,13 @@ export const renderOutroFrame = (ctx, data = {}, fontSizes = {}) => {
     // ZodiacFrame styling match
     const vertPadding = 30
     const horizPadding = 60
-    const lineHeight = 44
+    const _boxSize = fontSizes.boxContent ?? 32
+    const _boxLH = fontSizes.boxContentLH ?? 1.4
+    const lineHeight = _boxSize * _boxLH
 
     ctx.save()
     // Set font for measurement
-    ctx.font = `500 ${fontSizes.boxContent ?? 32}px "Garamond", serif`
+    ctx.font = `500 ${_boxSize}px "Garamond", serif`
     const textMetrics = ctx.measureText(text)
     const fullBoxWidth = textMetrics.width + (horizPadding * 2)
     const boxHeight = lineHeight + (vertPadding * 2) // ~104px
