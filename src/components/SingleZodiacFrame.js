@@ -129,11 +129,13 @@ export const renderZodiacFrame = (ctx, data = {}, fontSizes = {}) => {
   if (showVibe && vibeText) {
     const vibeY = 400 // Increased from 300 to add more space above vibe text
     const vibeMaxWidth = 900 // Maximum width for text wrapping
-    const vibeLineHeight = 50 // Line height for multi-line text
+    const vibeFontSize = _fs.vibe ?? 36
+    const vibeLH = _fs.vibeLH ?? 1.4
+    const vibeLineHeight = vibeFontSize * vibeLH // Line height for multi-line text
 
     ctx.save()
     ctx.fillStyle = '#FFFFFF'
-    ctx.font = `${_fs.vibe ?? 36}px "Garamond", serif`
+    ctx.font = `${vibeFontSize}px "Garamond", serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
 
@@ -176,7 +178,9 @@ export const renderZodiacFrame = (ctx, data = {}, fontSizes = {}) => {
     const boxWidth = 900
     const vertPadding = 30
     const horizPadding = 60
-    const lineHeight = 44
+    const boxFontSize = _fs.boxContent ?? 32
+    const boxLH = _fs.boxContentLH ?? 1.4
+    const lineHeight = boxFontSize * boxLH
     const titleHeight = 50 // Space for title
     const titleMargin = 30 // Space between title and box
 
@@ -203,7 +207,7 @@ export const renderZodiacFrame = (ctx, data = {}, fontSizes = {}) => {
       ctx.globalAlpha = labelOpacity
 
       // Text Setup for measurement
-      ctx.font = `500 ${_fs.boxContent ?? 32}px "Garamond", serif`
+      ctx.font = `500 ${boxFontSize}px "Garamond", serif`
 
       // Text Wrapping Calculation
       const words = text.split(' ')
@@ -247,7 +251,7 @@ export const renderZodiacFrame = (ctx, data = {}, fontSizes = {}) => {
     } else {
       // Calculate height for layout purposes even if not shown
       ctx.save()
-      ctx.font = `500 ${_fs.boxContent ?? 32}px "Garamond", serif`
+      ctx.font = `500 ${boxFontSize}px "Garamond", serif`
       const words = text.split(' ')
       let lines = []
       let currentLine = ''

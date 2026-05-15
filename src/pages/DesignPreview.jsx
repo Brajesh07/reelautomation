@@ -58,38 +58,106 @@ const zodiacIconMap = {
 // ─── Font-size slider config per frame ───────────────────────────────────────
 const FONT_CONTROLS = {
   intro: [
-    { key: "titleText", label: "Title Text", min: 24, max: 72, default: 42 },
+    {
+      key: "titleText",
+      label: "Title Text Size",
+      min: 24,
+      max: 72,
+      default: 42,
+    },
+    {
+      key: "titleTextLH",
+      label: "Title Line Spacing",
+      min: 0.8,
+      max: 2.5,
+      step: 0.1,
+      default: 1.4,
+    },
   ],
   zodiac: [
-    { key: "zodiacName", label: "Zodiac Name", min: 24, max: 72, default: 48 },
-    { key: "vibe", label: "Vibe Text", min: 20, max: 60, default: 36 },
+    {
+      key: "zodiacName",
+      label: "Zodiac Name Size",
+      min: 24,
+      max: 72,
+      default: 48,
+    },
+    { key: "vibe", label: "Vibe Text Size", min: 20, max: 60, default: 36 },
+    {
+      key: "vibeLH",
+      label: "Vibe Line Height",
+      min: 0.8,
+      max: 2.5,
+      step: 0.1,
+      default: 1.4,
+    },
     {
       key: "sectionLabel",
-      label: "Section Labels",
+      label: "Section Labels Size",
       min: 20,
       max: 60,
       default: 40,
     },
-    { key: "boxContent", label: "Box Content", min: 16, max: 52, default: 32 },
+    {
+      key: "boxContent",
+      label: "Box Content Size",
+      min: 16,
+      max: 52,
+      default: 32,
+    },
+    {
+      key: "boxContentLH",
+      label: "Box Line Height",
+      min: 0.8,
+      max: 2.5,
+      step: 0.1,
+      default: 1.4,
+    },
   ],
   outro: [
     {
       key: "sectionLabel",
-      label: "Question Text",
+      label: "Question Text Size",
       min: 20,
       max: 60,
       default: 42,
     },
-    { key: "boxContent", label: "Box Content", min: 16, max: 52, default: 32 },
+    {
+      key: "sectionLabelLH",
+      label: "Question Line Spacing",
+      min: 0.8,
+      max: 2.5,
+      step: 0.1,
+      default: 1.4,
+    },
+    {
+      key: "boxContent",
+      label: "Box Content Size",
+      min: 16,
+      max: 52,
+      default: 32,
+    },
+    {
+      key: "boxContentLH",
+      label: "Box Line Height",
+      min: 0.8,
+      max: 2.5,
+      step: 0.1,
+      default: 1.4,
+    },
   ],
 };
 
 const DEFAULT_FONT_SIZES = {
   titleText: 42,
+  titleTextLH: 1.4,
   zodiacName: 48,
   vibe: 36,
+  vibeLH: 1.4,
   sectionLabel: 40,
+  sectionLabelLH: 1.4,
   boxContent: 32,
+  boxContentLH: 1.4,
 };
 
 // ─── Tool Panel component ─────────────────────────────────────────────────────
@@ -108,42 +176,46 @@ const ToolPanel = ({ selectedFrame, fontSizes, onChange }) => {
     );
 
   return (
-    <div className="w-64 shrink-0 bg-[#111] rounded-xl border border-white/10 p-5 flex flex-col gap-5">
+    <div className="w-64 shrink-0 bg-[#111] rounded-xl border border-white/10 p-5 flex flex-col gap-5 overflow-y-auto max-h-[calc(100vh-120px)]">
       <h3 className="text-[#DAC477] font-bold text-sm uppercase tracking-widest">
-        Font Sizes
+        Typography
       </h3>
 
       {controls.map((ctrl) => (
         <div key={ctrl.key} className="flex flex-col gap-2">
           <div className="flex justify-between items-center">
-            <label className="text-gray-300 text-xs font-medium">
+            <label className="text-gray-300 text-[11px] font-medium">
               {ctrl.label}
             </label>
-            <span className="text-[#DAC477] text-xs font-mono bg-[#DAC477]/10 px-2 py-0.5 rounded">
-              {fontSizes[ctrl.key] ?? ctrl.default}px
+            <span className="text-[#DAC477] text-[10px] font-mono bg-[#DAC477]/10 px-2 py-0.5 rounded">
+              {fontSizes[ctrl.key] ?? ctrl.default}
+              {ctrl.key.endsWith("LH") ? "" : "px"}
             </span>
           </div>
           <input
             type="range"
             min={ctrl.min}
             max={ctrl.max}
+            step={ctrl.step ?? 1}
             value={fontSizes[ctrl.key] ?? ctrl.default}
             onChange={(e) => onChange(ctrl.key, Number(e.target.value))}
             className="w-full accent-[#DAC477] cursor-pointer"
           />
-          <div className="flex justify-between text-gray-600 text-[10px]">
-            <span>{ctrl.min}px</span>
-            <span>{ctrl.max}px</span>
+          <div className="flex justify-between text-gray-600 text-[9px]">
+            <span>
+              {ctrl.min}
+              {ctrl.key.endsWith("LH") ? "" : "px"}
+            </span>
+            <span>
+              {ctrl.max}
+              {ctrl.key.endsWith("LH") ? "" : "px"}
+            </span>
           </div>
         </div>
       ))}
 
       <button
         onClick={() => {
-          const resets = {};
-          controls.forEach((c) => {
-            resets[c.key] = c.default;
-          });
           controls.forEach((c) => onChange(c.key, c.default));
         }}
         className="mt-2 py-2 px-3 bg-white/5 border border-white/10 rounded-lg text-gray-400 text-xs hover:bg-white/10 hover:text-white transition-colors"
@@ -686,7 +758,7 @@ const DesignPreview = () => {
       </div>
 
       {/* Main 3-column layout */}
-      <div className="flex-1 flex gap-6 px-8 py-6 justify-center items-start">
+      <div className="flex-1 flex gap-6 px-8 py-6 justify-center items-start md:flex-row flex-col">
         {/* Left: Controls */}
         <div className="w-56 shrink-0 flex flex-col gap-4 sticky top-24">
           <div className="bg-[#111] rounded-xl border border-white/10 p-5 flex flex-col gap-3">
