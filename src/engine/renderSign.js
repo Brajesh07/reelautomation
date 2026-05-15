@@ -11,17 +11,17 @@ import trophySrc from "../images/trophy.png";
 import moneyBagSrc from "../images/money-bag.png";
 import crystalBallSrc from "../images/crystal-ball.png";
 import ariesSrc from "../images/aries.png";
-import taurusSrc from "../images/taurus.png";
-import geminiSrc from "../images/gemini.png";
-import cancerSrc from "../images/cancer.png";
-import leoSrc from "../images/leo.png";
-import virgoSrc from "../images/virgo.png";
-import libraSrc from "../images/libra.png";
+import taurusSrc from "../images/Taurus.png";
+import geminiSrc from "../images/Gemini.png";
+import cancerSrc from "../images/Cancer.png";
+import leoSrc from "../images/Leo.png";
+import virgoSrc from "../images/Virgo.png";
+import libraSrc from "../images/Libra.png";
 import scorpioSrc from "../images/scorpio.png";
-import sagittariusSrc from "../images/sagittarius.png";
-import capricornSrc from "../images/capricorn.png";
-import aquariusSrc from "../images/aquarius.png";
-import piscesSrc from "../images/pisces.png";
+import sagittariusSrc from "../images/Sagittarius.png";
+import capricornSrc from "../images/Capricorn.png";
+import aquariusSrc from "../images/Aquarius.png";
+import piscesSrc from "../images/Pisces.png";
 
 const ZODIAC_NAMES = [
   "Aries",
