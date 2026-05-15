@@ -62,7 +62,11 @@ function loadImage(src) {
   });
 }
 
+// Images are cached for the entire session — no reload between signs
+let cachedImages = null;
+
 async function loadAllImages() {
+  if (cachedImages) return cachedImages;
   const [zodiacImgs, decorativeImgs] = await Promise.all([
     Promise.all(ZODIAC_SRCS.map(loadImage)),
     Promise.all(DECORATIVE_SRCS.map(loadImage)),
@@ -71,7 +75,8 @@ async function loadAllImages() {
   ZODIAC_NAMES.forEach((name, i) => {
     zodiacIconsMap[name] = zodiacImgs[i];
   });
-  return { zodiacImgs, decorativeImgs, zodiacIconsMap };
+  cachedImages = { zodiacImgs, decorativeImgs, zodiacIconsMap };
+  return cachedImages;
 }
 
 // FFmpeg MUST be a singleton
@@ -321,7 +326,10 @@ export async function renderSign(signData, onProgress) {
   const totalDuration = tl.totalDuration();
   const totalFrames = Math.ceil(totalDuration * fps);
 
-  // 7. Frame capture loop — seek timeline per frame so onUpdate fires
+  // 7. Frame capture loop — pipeline JPEG compression with FS writes
+  // toBlob with JPEG is 5-8x faster than PNG and captures canvas state at call-time,
+  // so we can overlap the FS write of frame N with the seek+draw of frame N+1.
+  let pendingWrite = null;
   for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
     onProgress({
       stage: "capturing",
@@ -330,15 +338,25 @@ export async function renderSign(signData, onProgress) {
 
     tl.seek(frameIndex / fps, false); // false = don't suppress events → onUpdate fires
 
-    const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/png"),
+    // Kick off async JPEG compression immediately — canvas pixels captured at call-time
+    const blobPromise = new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85),
     );
+    const fileName = `frame${frameIndex.toString().padStart(5, "0")}.jpg`;
+
+    // Drain previous frame's FS write while JPEG compresses in parallel
+    if (pendingWrite) await pendingWrite;
+
+    const blob = await blobPromise;
     if (!blob) throw new Error("Canvas toBlob failed");
 
-    const fileName = `frame${frameIndex.toString().padStart(5, "0")}.png`;
-    const arrayBuffer = await blob.arrayBuffer();
-    await ffmpeg.writeFile(fileName, new Uint8Array(arrayBuffer));
+    // Start writing without awaiting — it will run while next frame is being drawn
+    pendingWrite = ffmpeg.writeFile(
+      fileName,
+      new Uint8Array(await blob.arrayBuffer()),
+    );
   }
+  if (pendingWrite) await pendingWrite;
 
   // 8. Encode
   const progressHandler = ({ progress }) => {
@@ -351,11 +369,11 @@ export async function renderSign(signData, onProgress) {
     "-framerate",
     "30",
     "-i",
-    "frame%05d.png",
+    "frame%05d.jpg", // JPEG sequence input
     "-c:v",
     "libx264",
     "-preset",
-    "fast",
+    "ultrafast", // 3-4x faster than "fast" in WASM — biggest single win
     "-crf",
     "23",
     "-pix_fmt",
@@ -369,11 +387,12 @@ export async function renderSign(signData, onProgress) {
   const outputData = await ffmpeg.readFile("output.mp4");
   const mp4Blob = new Blob([outputData.buffer], { type: "video/mp4" });
 
-  // 10. Cleanup FFmpeg FS
-  for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
-    const fileName = `frame${frameIndex.toString().padStart(5, "0")}.png`;
-    await ffmpeg.deleteFile(fileName);
-  }
+  // 10. Cleanup FFmpeg FS — delete all frame files in parallel
+  await Promise.all(
+    Array.from({ length: totalFrames }, (_, frameIndex) =>
+      ffmpeg.deleteFile(`frame${frameIndex.toString().padStart(5, "0")}.jpg`),
+    ),
+  );
   await ffmpeg.deleteFile("output.mp4");
   ffmpeg.off("progress", progressHandler);
 

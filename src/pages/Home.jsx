@@ -106,7 +106,7 @@ export default function Home() {
         <h1 className="text-3xl font-bold mb-6 text-center text-yellow-500">CanvaReel</h1>
         
         {/* Upload State */}
-        {!isRendering && !isComplete && (
+        {!isRendering && (!isComplete || renderedVideos.length === 0) && (
           <div className="space-y-6">
             <div className="text-center">
               <button
@@ -178,7 +178,7 @@ export default function Home() {
         )}
 
         {/* Complete State */}
-        {isComplete && (
+        {isComplete && renderedVideos.length > 0 && (
           <div className="space-y-6 text-center">
             <div className="text-5xl mb-4">✅</div>
             <h2 className="text-2xl font-bold text-green-400">All {renderedVideos.length} videos rendered!</h2>
