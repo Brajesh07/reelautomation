@@ -7,6 +7,7 @@ export default function Home() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const [error, setError] = useState('');
+  const [showToast, setShowToast] = useState(false);
   
   const { 
     signsData, 
@@ -19,11 +20,22 @@ export default function Home() {
     renderedVideos
   } = useRenderStore();
 
+  // Show toast fallback if browser notifications are denied or unsupported
+  React.useEffect(() => {
+    if (isComplete && renderedVideos.length > 0) {
+      const notificationsActive = 'Notification' in window && Notification.permission === 'granted';
+      if (!notificationsActive) {
+        setShowToast(true);
+      }
+    }
+  }, [isComplete, renderedVideos.length]);
+
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setError('');
+    setShowToast(false);
     
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -131,7 +143,7 @@ export default function Home() {
                   {signsData.length} signs loaded: {signsData.map(s => s.name).join(', ')}
                 </p>
                 <button 
-                  onClick={startRendering}
+                  onClick={() => startRendering(navigate)}
                   className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 rounded-xl transition-all shadow-lg"
                 >
                   Render All {signsData.length} Videos
@@ -196,6 +208,27 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* In-App Toast Fallback */}
+      {showToast && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+          <div className="bg-yellow-500 text-black px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border-2 border-yellow-400">
+            <span className="font-bold text-lg">✅ All {renderedVideos.length} videos are ready!</span>
+            <button 
+              onClick={() => navigate('/videos')}
+              className="bg-black text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-800 transition-colors flex items-center gap-2"
+            >
+              🎬 View Videos →
+            </button>
+            <button 
+              onClick={() => setShowToast(false)}
+              className="text-black/50 hover:text-black font-bold text-xl ml-2"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

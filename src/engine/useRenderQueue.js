@@ -5,6 +5,11 @@ import {
   getAllVideosFromDB,
   deleteVideoFromDB,
 } from "../utils/videoDB";
+import {
+  requestNotifyPermission,
+  notifySignDone,
+  notifyComplete,
+} from "../utils/notify";
 
 export const useRenderStore = create((set, get) => ({
   signsData: [],
@@ -23,9 +28,12 @@ export const useRenderStore = create((set, get) => ({
       progress: { stage: "idle", percent: 0 },
     }),
 
-  startRendering: async () => {
+  startRendering: async (navigate) => {
     const { signsData, isRendering } = get();
     if (signsData.length === 0 || isRendering) return;
+
+    // Ask for browser notification permission (once, before rendering starts)
+    await requestNotifyPermission();
 
     set({
       isRendering: true,
@@ -50,6 +58,9 @@ export const useRenderStore = create((set, get) => ({
         set((state) => ({
           renderedVideos: [...state.renderedVideos, video],
         }));
+
+        // Optional: Fire a silent notification after each sign completes
+        notifySignDone(signsData[i].name, i + 1, signsData.length);
       } catch (error) {
         console.error(`Failed to render sign ${signsData[i].name}:`, error);
       }
@@ -60,6 +71,9 @@ export const useRenderStore = create((set, get) => ({
       isComplete: true,
       progress: { stage: "idle", percent: 0 },
     });
+
+    // Fire completion notification
+    notifyComplete(get().renderedVideos.length, navigate);
   },
 
   deleteVideo: (filename) => {
