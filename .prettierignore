@@ -1,0 +1,17 @@
+# dependencies & build output
+node_modules
+dist
+output
+chrome
+
+# lockfiles are generated — never reformat them
+yarn.lock
+package-lock.json
+
+# generated / data files
+public/data.json
+.freebuff
+
+# misc
+coverage
+*.log

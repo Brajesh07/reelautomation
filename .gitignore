@@ -4,3 +4,7 @@ dist
 *.log
 output
 chrome
+
+# yarn is the only package manager here — ignore a stray npm lockfile
+package-lock.json
+.freebuff

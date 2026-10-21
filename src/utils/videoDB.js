@@ -1,37 +1,37 @@
-const DB_NAME = "reelautomation-videos";
+const DB_NAME = 'reelautomation-videos';
 const DB_VERSION = 1;
-const STORE_NAME = "videos";
+const STORE_NAME = 'videos';
 
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      e.target.result.createObjectStore(STORE_NAME, { keyPath: "filename" });
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(STORE_NAME, { keyPath: 'filename' });
     };
-    req.onsuccess = (e) => resolve(e.target.result);
-    req.onerror = (e) => reject(e.target.error);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }
 
 export async function saveVideoToDB(video) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
+    const tx = db.transaction(STORE_NAME, 'readwrite');
     // Store only filename, name and blob — NOT the blob URL (URLs are tab-scoped)
     tx.objectStore(STORE_NAME).put({
       filename: video.filename,
       name: video.name,
       blob: video.blob,
     });
-    tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e.target.error);
+    tx.oncomplete = () => resolve(undefined);
+    tx.onerror = () => reject(tx.error);
   });
 }
 
 export async function getAllVideosFromDB() {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
+    const tx = db.transaction(STORE_NAME, 'readonly');
     const req = tx.objectStore(STORE_NAME).getAll();
     req.onsuccess = (e) => {
       // Recreate a fresh blob URL for each stored entry
@@ -50,9 +50,9 @@ export async function getAllVideosFromDB() {
 export async function deleteVideoFromDB(filename) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
+    const tx = db.transaction(STORE_NAME, 'readwrite');
     tx.objectStore(STORE_NAME).delete(filename);
-    tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e.target.error);
+    tx.oncomplete = () => resolve(undefined);
+    tx.onerror = () => reject(tx.error);
   });
 }
