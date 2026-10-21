@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useRenderStore } from "../engine/useRenderQueue";
-import { downloadZip } from "../utils/downloadZip";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useRenderStore } from '../engine/useRenderQueue';
+import { downloadZip } from '../utils/downloadZip';
 
 export default function Videos() {
   const navigate = useNavigate();
@@ -26,11 +26,9 @@ export default function Videos() {
   if (renderedVideos.length === 0) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6 space-y-6">
-        <p className="text-xl text-gray-400">
-          No videos yet. Go render some first!
-        </p>
+        <p className="text-xl text-gray-400">No videos yet. Go render some first!</p>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate('/')}
           className="bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 px-8 rounded-xl shadow-lg"
         >
           ← Go Render
@@ -60,26 +58,20 @@ export default function Videos() {
   const handleDownload = async () => {
     if (selectedVideos.size === 0) return;
     setIsZipping(true);
-    const videosToDownload = renderedVideos.filter((v) =>
-      selectedVideos.has(v.filename),
-    );
+    const videosToDownload = renderedVideos.filter((v) => selectedVideos.has(v.filename));
     try {
       await downloadZip(videosToDownload);
       // Clear selection after successful download
       setSelectedVideos(new Set());
     } catch (error) {
-      alert("Failed to create ZIP.");
+      alert('Failed to create ZIP.');
     }
     setIsZipping(false);
   };
 
   const handleDelete = () => {
     if (selectedVideos.size === 0) return;
-    if (
-      window.confirm(
-        `Delete ${selectedVideos.size} videos? This cannot be undone.`,
-      )
-    ) {
+    if (window.confirm(`Delete ${selectedVideos.size} videos? This cannot be undone.`)) {
       const toDelete = Array.from(selectedVideos);
       toDelete.forEach((filename) => deleteVideo(filename));
       setSelectedVideos(new Set());
@@ -93,7 +85,7 @@ export default function Videos() {
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 border-b border-gray-700 pb-4">
           <div className="flex items-center gap-4 w-full sm:w-auto">
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate('/')}
               className="text-gray-400 hover:text-white font-medium"
             >
               ← Back
@@ -107,9 +99,7 @@ export default function Videos() {
             onClick={handleSelectAll}
             className="text-blue-400 hover:text-blue-300 font-medium"
           >
-            {selectedVideos.size === renderedVideos.length
-              ? "Deselect All"
-              : "Select All"}
+            {selectedVideos.size === renderedVideos.length ? 'Deselect All' : 'Select All'}
           </button>
         </div>
 
@@ -121,7 +111,7 @@ export default function Videos() {
               <div
                 key={video.filename}
                 className={`relative bg-gray-800 rounded-xl overflow-hidden cursor-pointer border-4 transition-colors ${
-                  isSelected ? "border-yellow-500" : "border-transparent"
+                  isSelected ? 'border-yellow-500' : 'border-transparent'
                 }`}
                 onClick={() => toggleSelect(video.filename)}
               >
@@ -146,6 +136,14 @@ export default function Videos() {
                 </div>
 
                 <div className="p-3 bg-gray-800 border-t border-gray-700">
+                  {video.name?.startsWith('Group Reel') && (
+                    <p
+                      className="text-[11px] text-[#DAC477] text-center truncate mb-1"
+                      title={video.name}
+                    >
+                      {video.name}
+                    </p>
+                  )}
                   <p
                     className="text-xs font-mono text-center text-gray-300 truncate"
                     title={video.filename}
@@ -162,9 +160,7 @@ export default function Videos() {
         {selectedVideos.size > 0 && (
           <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 p-4 shadow-2xl z-50">
             <div className="max-w-6xl mx-auto flex justify-between items-center">
-              <span className="font-bold text-yellow-500">
-                {selectedVideos.size} selected
-              </span>
+              <span className="font-bold text-yellow-500">{selectedVideos.size} selected</span>
 
               <div className="flex gap-4">
                 <button
@@ -172,7 +168,7 @@ export default function Videos() {
                   disabled={isZipping}
                   className="bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors"
                 >
-                  {isZipping ? "⏳ Zipping..." : "⬇ Download ZIP"}
+                  {isZipping ? '⏳ Zipping...' : '⬇ Download ZIP'}
                 </button>
 
                 <button
