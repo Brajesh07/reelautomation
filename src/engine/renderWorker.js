@@ -1,7 +1,12 @@
 /* ============================================================
  * src/engine/renderWorker.js
  *
- * Web Worker — bulk zodiac video encoder
+ * Web Worker — renders ONE MP4 per render task, off the main thread.
+ *
+ * A task is an array of signs: one sign = a single reel, several signs = a
+ * group reel (intro → card 1 … card N → outro) in one file. Because the work
+ * happens in a worker, the UI thread stays responsive and the per-frame canvas
+ * never competes with React for main-thread time.
  *
  * Track 1 (primary):  WebCodecs hardware encoder → FFmpeg mux only
  *                     Chrome 94+, Edge 94+, Chrome Android 94+
@@ -9,15 +14,25 @@
  * Track 2 (fallback): JPEG sequence → FFmpeg libx264 encode
  *                     Safari, Firefox, any browser without VideoEncoder
  *
- * Receives:  { type: 'START', signs: [...], fontConfig: {...}, date: string }
- * Emits:     PROGRESS | SIGN_DONE | ALL_DONE | ERROR
+ * Receives:  { type: 'START', taskId, signs, fontConfig, date, groupNumber }
+ * Emits:     PROGRESS { taskId, stage, percent, engine }
+ *            DONE     { taskId, name, filename, blob }
+ *            ERROR    { taskId, error }
  * ============================================================ */
 
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import gsap from 'gsap';
 import { renderIntroFrame } from '../components/IntroFrame';
 import { renderOutroFrame } from '../components/OutroFrame';
-import { createZodiacTimeline } from '../components/ZodiacFrame';
+import { createZodiacSequenceTimeline } from '../components/ZodiacFrame';
+import { buildTaskMeta } from './taskMeta';
+import { FPS, HEIGHT, WIDTH, planFrames } from './renderConfig';
+import {
+  buildIntroTimeline,
+  buildOutroTimeline,
+  createIntroState,
+  createOutroState,
+} from './animUtils';
 
 // ── Static asset imports — Vite resolves these to hashed URL strings ───────────
 import heartSrc from '../images/heart.png';
@@ -36,10 +51,12 @@ import sagittariusSrc from '../images/Sagittarius.png';
 import capricornSrc from '../images/Capricorn.png';
 import aquariusSrc from '../images/Aquarius.png';
 import piscesSrc from '../images/Pisces.png';
-import garamondBoldSrc from '../fonts/Garamond-Bold.TTF';
-import garamondRegularSrc from '../fonts/Garamond-Regular.TTF';
+// `?url` is required: Vite does not recognise uppercase `.TTF` as an asset
+// extension, so a bare import would be parsed as JavaScript and fail the build.
+import garamondBoldSrc from '../fonts/Garamond-Bold.TTF?url';
+import garamondRegularSrc from '../fonts/Garamond-Regular.TTF?url';
 // eslint-disable-next-line import/no-unresolved
-import nunitoSrc from '../fonts/NunitoSans-VariableFont_YTLC,opsz,wdth,wght.ttf';
+import nunitoSrc from '../fonts/NunitoSans-VariableFont_YTLC,opsz,wdth,wght.ttf?url';
 
 // ── Startup: disable GSAP ticker ───────────────────────────────────────────────
 // Workers have no requestAnimationFrame. Removing updateRoot prevents RAF errors
@@ -48,8 +65,11 @@ gsap.ticker.remove(gsap.updateRoot);
 
 // ── WebCodecs availability (Chrome 94+, Edge 94+) ─────────────────────────────
 const useWebCodecs = typeof VideoEncoder !== 'undefined';
+const ENCODER_ENGINE = useWebCodecs ? 'webcodecs' : 'jpeg';
 
-// ── Constants ──────────────────────────────────────────────────────────────────
+// ── Output format — shared with the main-thread engine ────────────────────────
+// (WIDTH / HEIGHT / FPS plus the frame-count math live in renderConfig.js)
+
 const ZODIAC_NAMES = [
   'Aries',
   'Taurus',
@@ -80,10 +100,11 @@ const ZODIAC_SRCS = [
 ];
 const DECORATIVE_SRCS = [heartSrc, trophySrc, moneyBagSrc, crystalBallSrc];
 
-// ── Singletons — loaded once per worker session, never per sign ────────────────
+// ── Singletons — loaded once per worker session, never per task ────────────────
 let ffmpegInstance = null;
 let sessionImages = null;
 let fontsLoaded = false;
+let busy = false;
 
 // =============================================================================
 // RESOURCE LOADERS
@@ -156,14 +177,21 @@ async function getFFmpeg() {
 // =============================================================================
 // TRACK 1 — WebCodecs hardware-accelerated path
 //
-// VideoEncoder produces raw H.264 NAL units in the browser (hardware-backed on
-// supported devices).  FFmpeg is used only to mux those chunks into an MP4
-// container with '-c:v copy' — no pixel conversion, no re-encoding.
-// Muxing is nearly instant (milliseconds).
+// VideoEncoder produces raw H.264 NAL units in the worker (hardware-backed on
+// supported devices).  The stream is encoded as Annex-B with in-band SPS/PPS,
+// so FFmpeg can mux it with the raw H.264 demuxer and '-c:v copy' — no pixel
+// conversion, no re-encoding.  Muxing is nearly instant.
+//
+// Memory: only compressed chunks are kept (a 3-minute reel is ~170 MB of
+// H.264, versus ~700 MB for the equivalent JPEG frame sequence), and each
+// chunk is dropped as soon as it has been copied into the contiguous buffer.
 // =============================================================================
 
-async function encodeWithWebCodecs(canvas, seekFn, totalFrames, fps) {
+async function encodeWithWebCodecs(canvas, seekFn, totalFrames, fps, report) {
+  /** @type {Array<{ buf: Uint8Array, type: string, timestamp: number } | null>} */
   const chunks = [];
+  /** @type {Error|null} */
+  let encoderError = null;
 
   const encoder = new VideoEncoder({
     output: (chunk) => {
@@ -171,62 +199,80 @@ async function encodeWithWebCodecs(canvas, seekFn, totalFrames, fps) {
       chunk.copyTo(buf);
       chunks.push({ buf, type: chunk.type, timestamp: chunk.timestamp });
     },
+    // Encoder errors arrive asynchronously; store them and fail the frame loop
     error: (e) => {
-      throw new Error('VideoEncoder error: ' + e.message);
+      encoderError = e instanceof Error ? e : new Error(String(e));
     },
   });
 
   encoder.configure({
     codec: 'avc1.4d0028', // H.264 Main profile Level 4.0 — required for 1080×1920
-    width: 1080,
-    height: 1920,
+    width: WIDTH,
+    height: HEIGHT,
     framerate: fps,
     bitrate: 8_000_000, // 8 Mbps — good quality for 1080×1920
     hardwareAcceleration: 'prefer-hardware',
+    // Realtime forbids lookahead/B-frames, so decode order == presentation
+    // order and the raw H.264 demuxer can timestamp frames with '-r fps'.
+    latencyMode: 'realtime',
+    // Annex-B gives in-band SPS/PPS and start codes, which is exactly what
+    // FFmpeg's 'h264' demuxer expects.
+    avc: { format: 'annexb' },
   });
 
   for (let frame = 0; frame < totalFrames; frame++) {
+    if (encoderError) throw encoderError;
+
     seekFn(frame);
 
     // VideoFrame accepts OffscreenCanvas directly — no getImageData copy needed
     const videoFrame = new VideoFrame(canvas, {
       timestamp: Math.round((frame / fps) * 1_000_000), // microseconds
+      duration: Math.round(1_000_000 / fps),
     });
 
     encoder.encode(videoFrame, { keyFrame: frame % 30 === 0 });
     videoFrame.close(); // MUST close every VideoFrame to avoid GPU memory leak
 
-    if (frame % 10 === 0) {
-      self.postMessage({
-        type: 'PROGRESS',
-        stage: 'capturing (hardware)',
-        percent: frame / totalFrames,
-      });
+    if (frame % 15 === 0) {
+      report('capturing', Math.round((frame / totalFrames) * 100));
     }
 
-    // Yield every 30 frames so the encoder can drain its internal queue
-    // and prevent unbounded memory buildup in the encoder pipeline
-    if (frame % 30 === 0) await new Promise((r) => setTimeout(r, 0));
+    // Let the encoder drain its internal queue so a long group reel cannot
+    // build up an unbounded number of pending frames.
+    if (frame % 30 === 0) {
+      while (encoder.encodeQueueSize > 8) {
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      await new Promise((r) => setTimeout(r, 0));
+    }
   }
 
   await encoder.flush();
   encoder.close();
+  if (encoderError) throw encoderError;
 
-  // Concatenate all H.264 NAL unit chunks into a single raw stream
-  const totalSize = chunks.reduce((s, c) => s + c.buf.byteLength, 0);
-  const h264Buffer = new Uint8Array(totalSize);
+  // Concatenate all H.264 NAL unit chunks into a single raw Annex-B stream
+  const totalSize = chunks.reduce((sum, chunk) => sum + (chunk ? chunk.buf.byteLength : 0), 0);
+  let h264Buffer = new Uint8Array(totalSize);
   let offset = 0;
-  for (const chunk of chunks) {
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (!chunk) continue;
     h264Buffer.set(chunk.buf, offset);
     offset += chunk.buf.byteLength;
+    chunks[i] = null; // release each compressed chunk as soon as it is copied
   }
 
   // Mux into MP4 container — '-c:v copy' means NO re-encoding, just wrapping
   const ff = await getFFmpeg();
-  self.postMessage({ type: 'PROGRESS', stage: 'encoding', percent: 0 });
+  report('encoding', 0);
 
   await ff.writeFile('input.h264', h264Buffer);
+  h264Buffer = null; // the WASM FS now owns the only copy
+
   await ff.exec([
+    '-y', // never prompt on an existing output.mp4
     '-f',
     'h264', // tell FFmpeg the input format is raw H.264
     '-r',
@@ -243,6 +289,7 @@ async function encodeWithWebCodecs(canvas, seekFn, totalFrames, fps) {
   const data = await ff.readFile('output.mp4');
   await ff.deleteFile('input.h264');
   await ff.deleteFile('output.mp4');
+  report('encoding', 100);
 
   return new Blob([data.buffer], { type: 'video/mp4' });
 }
@@ -254,7 +301,7 @@ async function encodeWithWebCodecs(canvas, seekFn, totalFrames, fps) {
 // so FFmpeg has far less data to process than the previous PNG/RGBA approach.
 // =============================================================================
 
-async function encodeWithJpegFallback(canvas, seekFn, totalFrames, fps) {
+async function encodeWithJpegFallback(canvas, seekFn, totalFrames, fps, report) {
   const ff = await getFFmpeg();
 
   // Pipeline: overlap FS write of frame N with convertToBlob of frame N+1.
@@ -269,7 +316,7 @@ async function encodeWithJpegFallback(canvas, seekFn, totalFrames, fps) {
       type: 'image/jpeg',
       quality: 0.85,
     });
-    const filename = `frame${String(frame).padStart(3, '0')}.jpg`;
+    const filename = `frame${String(frame).padStart(5, '0')}.jpg`;
 
     // Drain previous frame's FS write while JPEG compresses in parallel
     if (pendingWrite) await pendingWrite;
@@ -277,23 +324,24 @@ async function encodeWithJpegFallback(canvas, seekFn, totalFrames, fps) {
     const jpeg = await jpegPromise;
     pendingWrite = ff.writeFile(filename, new Uint8Array(await jpeg.arrayBuffer()));
 
-    if (frame % 10 === 0) {
-      self.postMessage({
-        type: 'PROGRESS',
-        stage: 'capturing (software)',
-        percent: frame / totalFrames,
-      });
+    if (frame % 15 === 0) {
+      report('capturing', Math.round((frame / totalFrames) * 100));
     }
+
+    // Yield now and then so the worker still services messages and the FS
+    // can settle its buffers during a long group reel.
+    if (frame % 30 === 0) await new Promise((r) => setTimeout(r, 0));
   }
   if (pendingWrite) await pendingWrite;
 
-  self.postMessage({ type: 'PROGRESS', stage: 'encoding', percent: 0 });
+  report('encoding', 0);
 
   await ff.exec([
+    '-y', // never prompt on an existing output.mp4
     '-framerate',
     String(fps),
     '-i',
-    'frame%03d.jpg', // JPEG sequence input pattern
+    'frame%05d.jpg', // JPEG sequence input pattern
     '-c:v',
     'libx264',
     '-preset',
@@ -312,10 +360,11 @@ async function encodeWithJpegFallback(canvas, seekFn, totalFrames, fps) {
   // Cleanup all frame files from FFmpeg's virtual filesystem in parallel
   await Promise.all(
     Array.from({ length: totalFrames }, (_, f) =>
-      ff.deleteFile(`frame${String(f).padStart(3, '0')}.jpg`),
+      ff.deleteFile(`frame${String(f).padStart(5, '0')}.jpg`),
     ),
   );
   await ff.deleteFile('output.mp4');
+  report('encoding', 100);
 
   return new Blob([data.buffer], { type: 'video/mp4' });
 }
@@ -323,201 +372,89 @@ async function encodeWithJpegFallback(canvas, seekFn, totalFrames, fps) {
 // =============================================================================
 // TIMELINE BUILDERS
 //
-// These build GSAP timelines that update state objects only — no render
-// callbacks.  renderIntroFrame / renderOutroFrame are called explicitly in
-// seekFrame() after each seek so the canvas reflects the current state.
+// The intro/outro animations are shared with the main-thread engine and live in
+// ./animUtils.js, so both engines always produce the same frames and duration.
+// renderIntroFrame / renderOutroFrame are called explicitly in seekFrame() after
+// each seek, because this worker has no per-tween repaint hook.
+// =============================================================================
+
+/** Best-effort cleanup so a failed encode cannot block the retry with a prompt. */
+async function clearTemporaryFiles() {
+  if (!ffmpegInstance) return;
+  for (const name of ['input.h264', 'output.mp4']) {
+    try {
+      await ffmpegInstance.deleteFile(name);
+    } catch {
+      /* file was never written */
+    }
+  }
+}
+
+// =============================================================================
+// CORE TASK RENDERER
 //
-// createZodiacTimeline() (from ZodiacFrame.js) has its own onUpdate that calls
-// renderZodiacFrame internally, so no explicit draw is needed for that segment.
+// One task → one MP4:
+//   single reel:  Intro → card → Outro
+//   group reel:   Intro → card 1 → card 2 → … → card N → Outro
+// Frame count is derived from the real timeline durations, so it scales with
+// the number of cards without any hard-coded numbers.
 // =============================================================================
 
-/**
- * Build a paused GSAP timeline that animates introState properties.
- * Typewriter onUpdate handlers update text state but do NOT draw to canvas.
- */
-function buildIntroTimeline(introState, zodiacStr, dateStr) {
-  const textCounters = { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0 };
-  const content = {
-    l1: 'DAILY',
-    l2: 'HOROSCOPE',
-    l3: 'FOR',
-    l4: zodiacStr,
-    l5: dateStr,
-  };
+async function renderTask({ signs, fontConfig = {}, date, groupNumber = null }, report) {
+  const signList = Array.isArray(signs) ? signs : [];
+  if (signList.length === 0) throw new Error('renderTask: no signs provided');
 
-  const tl = gsap.timeline({ paused: true });
-
-  // Establish initial state so GSAP knows the "from" values
-  tl.set(introState, {
-    scale: 0,
-    rotation: -60,
-    opacity: 0,
-    textFade: 1,
-    showText: false,
-  });
-
-  // Spinning zodiac ring entrance
-  tl.to(introState, {
-    scale: 1,
-    opacity: 1,
-    rotation: 120,
-    duration: 3.5,
-    ease: 'power2.out',
-  });
-
-  // Reset text counters before typewriter begins
-  tl.call(() => {
-    introState.text1 = '';
-    introState.text2 = '';
-    introState.text3 = '';
-    introState.text4 = '';
-    introState.text5 = '';
-  });
-  tl.set(introState, { showText: true });
-
-  // Typewriter effect — updates text state only, no canvas draw here
-  const addTypeTween = (counterKey, contentStr, label) => {
-    tl.to(
-      textCounters,
-      {
-        [counterKey]: contentStr.length,
-        duration: contentStr.length * 0.05,
-        ease: 'none',
-        onUpdate: () => {
-          const count = Math.ceil(textCounters[counterKey]);
-          if (counterKey === 'c1') introState.text1 = content.l1.substring(0, count);
-          if (counterKey === 'c2') introState.text2 = content.l2.substring(0, count);
-          if (counterKey === 'c3') introState.text3 = content.l3.substring(0, count);
-          if (counterKey === 'c4') introState.text4 = content.l4.substring(0, count);
-          if (counterKey === 'c5') introState.text5 = content.l5.substring(0, count);
-        },
-      },
-      label,
-    );
-  };
-
-  addTypeTween('c1', content.l1, '>');
-  addTypeTween('c2', content.l2, '>+0.1');
-  addTypeTween('c3', content.l3, '>+0.1');
-  addTypeTween('c4', content.l4, '>+0.1');
-  addTypeTween('c5', content.l5, '>+0.2');
-
-  // Fade out intro
-  tl.to(
-    introState,
-    {
-      opacity: 0,
-      textFade: 0,
-      duration: 1.5,
-      ease: 'power2.inOut',
-    },
-    '+=0.5',
-  );
-
-  return tl;
-}
-
-/**
- * Build a paused GSAP timeline that animates outroState properties.
- * The typewriter onUpdate updates outroState.text1 only, no canvas draw.
- */
-function buildOutroTimeline(outroState) {
-  const outroFullText = 'Want a personalised reading?';
-  const outroTextCounter = { val: 0 };
-
-  const tl = gsap.timeline({ paused: true });
-
-  // Spinning zodiac ring entrance
-  tl.to(outroState, {
-    scale: 1,
-    opacity: 1,
-    rotation: 120,
-    duration: 3.5,
-    ease: 'power2.out',
-  });
-
-  // CTA typewriter
-  tl.to(outroTextCounter, {
-    val: outroFullText.length,
-    duration: outroFullText.length * 0.05,
-    ease: 'none',
-    onUpdate: () => {
-      outroState.text1 = outroFullText.substring(0, Math.ceil(outroTextCounter.val));
-    },
-  });
-
-  // Button reveal
-  tl.to(outroState, { boxWidth: 100, duration: 1.5, ease: 'power2.out' });
-
-  // Hold
-  tl.to({}, { duration: 3 });
-
-  // Fade out
-  tl.to(outroState, { opacity: 0, duration: 1.5, ease: 'power2.inOut' });
-
-  return tl;
-}
-
-// =============================================================================
-// CORE SIGN RENDERER
-// =============================================================================
-
-async function renderSign(signData, current, total, fontConfig, dateStr) {
   const { zodiacBitmaps, decorativeBitmaps, zodiacIconsMap } = await ensureImagesLoaded();
 
-  const canvas = new OffscreenCanvas(1080, 1920);
+  const canvas = new OffscreenCanvas(WIDTH, HEIGHT);
   // The shared frame renderers are typed for the DOM 2D context; they only use
   // the drawing subset that OffscreenCanvas implements as well.
   const ctx = /** @type {CanvasRenderingContext2D} */ (
     /** @type {any} */ (canvas.getContext('2d'))
   );
-  const FPS = 30;
 
-  const zodiacStr = signData.name.toUpperCase();
-  const highlightedNames = [signData.name];
+  const highlightedNames = signList.map((sign) => sign.name);
 
-  // ── Animation state objects ──────────────────────────────────────────────
-  const introState = {
-    scale: 0,
-    rotation: -60,
-    opacity: 0,
-    showText: false,
-    textFade: 1,
-    text1: '',
-    text2: '',
-    text3: '',
-    text4: '',
-    text5: '',
-  };
+  // ── Animation state objects (shared factories, so both engines start equal) ─
+  const introState = createIntroState();
+  const outroState = createOutroState();
 
-  const outroState = {
-    opacity: 0,
-    rotation: -60,
-    scale: 0,
-    text1: '',
-    boxWidth: 0,
-  };
+  // ── Build three separate timelines, then pause them (this worker seeks) ─────
+  const introTimeline = buildIntroTimeline(introState, signList, date);
+  introTimeline.pause();
 
-  // ── Build three separate paused timelines ──────────────────────────────────
-  const introTimeline = buildIntroTimeline(introState, zodiacStr, dateStr);
-
-  const icon = zodiacIconsMap[signData.name] ?? zodiacIconsMap['Leo'];
-  const zodiacTimeline = createZodiacTimeline(
+  // The sequence is what turns "N signs" into one reel: first card brings the
+  // decorative row in, last card fades everything out, cards in between slide
+  // over the row that is already on screen.
+  const zodiacTimeline = createZodiacSequenceTimeline(
     ctx,
-    signData,
-    { decorative: decorativeBitmaps, icon },
-    { isFirst: true, isLast: true, fontSizes: fontConfig },
+    signList,
+    {
+      decorative: decorativeBitmaps,
+      iconFor: (name) => zodiacIconsMap[name] || zodiacIconsMap['Leo'],
+    },
+    { fontSizes: fontConfig },
   );
+  zodiacTimeline.pause();
 
   const outroTimeline = buildOutroTimeline(outroState);
+  outroTimeline.pause();
 
   // ── Derive actual frame counts from real timeline durations ───────────────
-  // Using totalDuration() is more reliable than hard-coded frame counts because
-  // intro/outro lengths vary with sign name length and zodiac is exactly 13s.
-  const introFrames = Math.ceil(introTimeline.totalDuration() * FPS);
-  const zodiacFrames = Math.ceil(zodiacTimeline.totalDuration() * FPS);
-  const outroFrames = Math.ceil(outroTimeline.totalDuration() * FPS);
-  const totalFrames = introFrames + zodiacFrames + outroFrames;
+  // Same helper the main-thread engine uses, so a task has the same length
+  // whichever engine renders it.
+  const introDuration = introTimeline.totalDuration();
+  const zodiacDuration = zodiacTimeline.totalDuration();
+  const outroDuration = outroTimeline.totalDuration();
+  const plan = planFrames([introDuration, zodiacDuration, outroDuration]);
+  const [introFrames, zodiacFrames, outroFrames] = plan.segments;
+  const totalFrames = plan.total;
+
+  // Same diagnostic the main-thread engine prints, so the two can be compared
+  const totalDuration = introDuration + zodiacDuration + outroDuration;
+  console.log(
+    `[renderWorker] ${signList.length} card(s) -> ${totalFrames} frames (${totalDuration.toFixed(2)}s)`,
+  );
 
   const zodiacStart = introFrames;
   const outroStart = introFrames + zodiacFrames;
@@ -573,19 +510,24 @@ async function renderSign(signData, current, total, fontConfig, dateStr) {
     }
   }
 
-  // ── Pick encoding track based on browser support ───────────────────────────
-  self.postMessage({
-    type: 'PROGRESS',
-    sign: signData.name,
-    current,
-    total,
-    stage: useWebCodecs ? 'capturing (hardware)' : 'capturing (software)',
-    percent: 0,
-  });
+  report('preparing', 0);
 
-  const blob = useWebCodecs
-    ? await encodeWithWebCodecs(canvas, seekFrame, totalFrames, FPS)
-    : await encodeWithJpegFallback(canvas, seekFrame, totalFrames, FPS);
+  let blob;
+  if (useWebCodecs) {
+    try {
+      blob = await encodeWithWebCodecs(canvas, seekFrame, totalFrames, FPS, report);
+    } catch (err) {
+      // Hardware encoders can reject a config on some devices; the JPEG track
+      // still lives in this worker, so a reel never has to fall back to the UI
+      // thread just because WebCodecs was unavailable at runtime.
+      console.warn('[renderWorker] WebCodecs path failed, using JPEG track:', err);
+      await clearTemporaryFiles();
+      report('preparing', 0);
+      blob = await encodeWithJpegFallback(canvas, seekFrame, totalFrames, FPS, report);
+    }
+  } else {
+    blob = await encodeWithJpegFallback(canvas, seekFrame, totalFrames, FPS, report);
+  }
 
   // Free GSAP timelines and their internal tween objects
   introTimeline.kill();
@@ -597,34 +539,43 @@ async function renderSign(signData, current, total, fontConfig, dateStr) {
 
 // =============================================================================
 // MESSAGE HANDLER
+//
+// One START message == one task == one video. The queue sends tasks one at a
+// time; `busy` guards against overlapping starts (e.g. a double-click).
 // =============================================================================
 
 self.onmessage = async (e) => {
-  const { type, signs, fontConfig = {}, date } = e.data;
+  const { type, taskId, signs = [], fontConfig = {}, date, groupNumber = null } = e.data || {};
   if (type !== 'START') return;
 
+  if (busy) {
+    self.postMessage({ type: 'ERROR', taskId, error: 'Renderer is already busy with a task' });
+    return;
+  }
+
+  busy = true;
+  const report = (stage, percent) =>
+    self.postMessage({ type: 'PROGRESS', taskId, stage, percent, engine: ENCODER_ENGINE });
+
   try {
-    // Load fonts once before processing any signs
+    const signList = Array.isArray(signs) ? signs : [];
+    // `date` is the human-readable intro date ("21st Oct 2026"); filenames use
+    // the ISO day, matching the main-thread renderer.
+    const { name, filename } = buildTaskMeta(signList, groupNumber);
+
+    // Load fonts once before the first task
     await ensureFontsLoaded();
 
-    for (let i = 0; i < signs.length; i++) {
-      const signData = signs[i];
+    const blob = await renderTask({ signs: signList, fontConfig, date, groupNumber }, report);
 
-      const blob = await renderSign(signData, i + 1, signs.length, fontConfig, date);
-
-      const fileDateStr = new Date().toISOString().split('T')[0];
-      const filename = `${signData.name}_${fileDateStr}.mp4`;
-
-      self.postMessage({
-        type: 'SIGN_DONE',
-        sign: signData.name,
-        filename,
-        blob,
-      });
-    }
-
-    self.postMessage({ type: 'ALL_DONE' });
+    self.postMessage({ type: 'DONE', taskId, name, filename, blob });
   } catch (err) {
-    self.postMessage({ type: 'ERROR', error: err.message });
+    self.postMessage({
+      type: 'ERROR',
+      taskId,
+      error: err?.message || 'Unknown worker render error',
+    });
+  } finally {
+    busy = false;
   }
 };

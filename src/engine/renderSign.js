@@ -4,6 +4,14 @@ import { renderIntroFrame } from '../components/IntroFrame';
 import { renderOutroFrame } from '../components/OutroFrame';
 import { createZodiacSequenceTimeline } from '../components/ZodiacFrame';
 import { formatDate } from '../utils/dateFormatter';
+import { buildTaskMeta } from './taskMeta';
+import { FPS, HEIGHT, WIDTH, planFrames } from './renderConfig';
+import {
+  buildIntroTimeline,
+  buildOutroTimeline,
+  createIntroState,
+  createOutroState,
+} from './animUtils';
 
 // Static image imports resolved by Vite
 import heartSrc from '../images/heart.png';
@@ -93,15 +101,6 @@ async function getFFmpeg() {
   return ffmpegInstance;
 }
 
-// Intro line 4 is drawn with a 600px max width, so long sign lists are abbreviated
-const MAX_INTRO_NAMES = 3;
-
-function buildIntroNames(signs) {
-  const names = signs.map((sign) => sign.name.toUpperCase());
-  if (names.length <= MAX_INTRO_NAMES) return names.join(', ');
-  return `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
-}
-
 /**
  * Renders ONE video from one or more zodiac entries.
  *
@@ -120,7 +119,6 @@ export async function renderSign(signs, onProgress, options = {}) {
   if (signList.length === 0) throw new Error('renderSign: no signs provided');
 
   const { groupNumber = null } = options;
-  const isGroup = signList.length > 1;
   const ffmpeg = await getFFmpeg();
 
   // 1. Load all images before building timeline
@@ -128,8 +126,8 @@ export async function renderSign(signs, onProgress, options = {}) {
 
   // 2. Off-screen canvas
   const canvas = document.createElement('canvas');
-  canvas.width = 1080;
-  canvas.height = 1920;
+  canvas.width = WIDTH;
+  canvas.height = HEIGHT;
   const ctx = canvas.getContext('2d');
 
   // 3. Read font config
@@ -141,31 +139,12 @@ export async function renderSign(signs, onProgress, options = {}) {
     /* use defaults */
   }
 
-  const fps = 30;
   const dateStr = formatDate(new Date());
   const highlightedNames = signList.map((sign) => sign.name);
 
-  // 4. Animation state objects
-  const introAnimState = {
-    scale: 0,
-    rotation: -60,
-    opacity: 0,
-    showText: false,
-    textFade: 1,
-    text1: '',
-    text2: '',
-    text3: '',
-    text4: '',
-    text5: '',
-  };
-
-  const outroAnimState = {
-    opacity: 0,
-    rotation: -60,
-    scale: 0,
-    text1: '',
-    boxWidth: 0,
-  };
+  // 4. Animation state objects (shared factories, so both engines start equal)
+  const introAnimState = createIntroState();
+  const outroAnimState = createOutroState();
 
   const updateIntro = () => {
     const textData = introAnimState.showText
@@ -207,80 +186,12 @@ export async function renderSign(signs, onProgress, options = {}) {
     );
   };
 
-  // 5. Build GSAP timeline (paused)
+  // 5. Build GSAP timeline (paused) from the same segments the worker uses
   const tl = gsap.timeline({ paused: true });
 
-  // --- Intro ---
-  tl.set(introAnimState, {
-    scale: 0,
-    rotation: -60,
-    opacity: 0,
-    textFade: 1,
-    showText: false,
-  });
-  tl.to(introAnimState, {
-    scale: 1,
-    opacity: 1,
-    rotation: 120,
-    duration: 3.5,
-    ease: 'power2.out',
-    onUpdate: updateIntro,
-  });
-  tl.call(() => {
-    introAnimState.text1 = '';
-    introAnimState.text2 = '';
-    introAnimState.text3 = '';
-    introAnimState.text4 = '';
-    introAnimState.text5 = '';
-  });
-  tl.set(introAnimState, { showText: true });
-
-  const textCounters = { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0 };
-  const content = {
-    l1: 'DAILY',
-    l2: 'HOROSCOPE',
-    l3: 'FOR',
-    l4: buildIntroNames(signList),
-    l5: dateStr,
-  };
-
-  const addTypeTween = (counterKey, contentStr, label) => {
-    tl.to(
-      textCounters,
-      {
-        [counterKey]: contentStr.length,
-        duration: contentStr.length * 0.05,
-        ease: 'none',
-        onUpdate: () => {
-          const count = Math.ceil(textCounters[counterKey]);
-          if (counterKey === 'c1') introAnimState.text1 = content.l1.substring(0, count);
-          if (counterKey === 'c2') introAnimState.text2 = content.l2.substring(0, count);
-          if (counterKey === 'c3') introAnimState.text3 = content.l3.substring(0, count);
-          if (counterKey === 'c4') introAnimState.text4 = content.l4.substring(0, count);
-          if (counterKey === 'c5') introAnimState.text5 = content.l5.substring(0, count);
-          updateIntro();
-        },
-      },
-      label,
-    );
-  };
-  addTypeTween('c1', content.l1, '>');
-  addTypeTween('c2', content.l2, '>+0.1');
-  addTypeTween('c3', content.l3, '>+0.1');
-  addTypeTween('c4', content.l4, '>+0.1');
-  addTypeTween('c5', content.l5, '>+0.2');
-
-  tl.to(
-    introAnimState,
-    {
-      opacity: 0,
-      textFade: 0,
-      duration: 1.5,
-      ease: 'power2.inOut',
-      onUpdate: updateIntro,
-    },
-    '+=0.5',
-  );
+  // --- Intro / Outro come from animUtils.js, the same code the worker runs ---
+  const introTL = buildIntroTimeline(introAnimState, signList, dateStr, updateIntro);
+  tl.add(introTL);
 
   // --- Zodiac section: 1 card for a single reel, N cards for a group reel ---
   const zodiacTL = createZodiacSequenceTimeline(
@@ -294,55 +205,22 @@ export async function renderSign(signs, onProgress, options = {}) {
   );
   tl.add(zodiacTL);
 
-  // --- Outro ---
-  tl.add(() => {
-    outroAnimState.opacity = 0;
-    outroAnimState.rotation = -60;
-    outroAnimState.scale = 0;
-    outroAnimState.text1 = '';
-    outroAnimState.boxWidth = 0;
-  });
-  tl.to(outroAnimState, {
-    scale: 1,
-    opacity: 1,
-    rotation: 120,
-    duration: 3.5,
-    ease: 'power2.out',
-    onUpdate: updateOutro,
-  });
+  const outroTL = buildOutroTimeline(outroAnimState, updateOutro);
+  tl.add(outroTL);
 
-  const outroFullText = 'Want a personalised reading?';
-  const outroTextCounter = { val: 0 };
-  tl.to(outroTextCounter, {
-    val: outroFullText.length,
-    duration: outroFullText.length * 0.05,
-    ease: 'none',
-    onUpdate: () => {
-      outroAnimState.text1 = outroFullText.substring(0, Math.ceil(outroTextCounter.val));
-      updateOutro();
-    },
-  });
-  tl.to(outroAnimState, {
-    boxWidth: 100,
-    duration: 1.5,
-    ease: 'power2.out',
-    onUpdate: updateOutro,
-  });
-  tl.to({}, { duration: 3 });
-  tl.to(outroAnimState, {
-    opacity: 0,
-    duration: 1.5,
-    ease: 'power2.inOut',
-    onUpdate: updateOutro,
-  });
+  // The frame renderers save/restore their own alpha; this is only a safety net
   tl.add(() => {
     ctx.globalAlpha = 1;
   });
 
-  // 6. Derive total frames from actual timeline duration
-  //    (scales automatically with the number of cards in the reel)
+  // 6. Derive total frames from actual timeline durations, with the shared
+  //    per-segment rounding so both engines produce the same reel length
   const totalDuration = tl.totalDuration();
-  const totalFrames = Math.ceil(totalDuration * fps);
+  const totalFrames = planFrames([
+    introTL.totalDuration(),
+    zodiacTL.totalDuration(),
+    outroTL.totalDuration(),
+  ]).total;
   console.log(
     `[renderSign] ${signList.length} card(s) -> ${totalFrames} frames (${totalDuration.toFixed(2)}s)`,
   );
@@ -357,7 +235,7 @@ export async function renderSign(signs, onProgress, options = {}) {
       percent: Math.round((frameIndex / totalFrames) * 100),
     });
 
-    tl.seek(frameIndex / fps, false); // false = don't suppress events → onUpdate fires
+    tl.seek(frameIndex / FPS, false); // false = don't suppress events → onUpdate fires
 
     // Kick off async JPEG compression immediately — canvas pixels captured at call-time
     const blobPromise = new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
@@ -383,7 +261,7 @@ export async function renderSign(signs, onProgress, options = {}) {
 
   await ffmpeg.exec([
     '-framerate',
-    '30',
+    String(FPS),
     '-i',
     'frame%05d.jpg', // JPEG sequence input
     '-c:v',
@@ -415,19 +293,11 @@ export async function renderSign(signs, onProgress, options = {}) {
   // Free GSAP timeline
   tl.kill();
 
-  const fileDateStr = new Date().toISOString().split('T')[0];
-  const groupTag = Number.isInteger(groupNumber) ? `${groupNumber}_` : '';
-  const filename = isGroup
-    ? `GroupReel_${groupTag}${signList.length}Signs_${fileDateStr}.mp4`
-    : `${signList[0].name}_${fileDateStr}.mp4`;
+  // Same label + filename the worker engine produces for the same task
+  const { name, filename } = buildTaskMeta(signList, groupNumber);
 
   return {
-    // Human-readable label used by the gallery and notifications
-    name: isGroup
-      ? `Group Reel${groupNumber ? ` ${groupNumber}` : ''} (${signList
-          .map((sign) => sign.name)
-          .join(', ')})`
-      : signList[0].name,
+    name,
     filename,
     blob: mp4Blob,
     url: URL.createObjectURL(mp4Blob),

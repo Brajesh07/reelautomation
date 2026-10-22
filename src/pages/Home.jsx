@@ -129,6 +129,11 @@ export default function Home() {
   const offersGroupMode = signsData.length > GROUP_OPTIONS_THRESHOLD;
   const groups = offersGroupMode && selection.group ? selection.groups : [];
 
+  // Grid width follows the cell count (group cards + the always-present add card):
+  // 1 group + add → 2 columns; 2 or more groups + add → 3 columns, wrapping.
+  const gridItemCount = groups.length + 1;
+  const gridColsClass = gridItemCount <= 2 ? 'md:grid-cols-2' : 'md:grid-cols-3';
+
   const plannedTasks = useMemo(
     () => buildRenderTasks(signsData, offersGroupMode ? { single: selection.single, groups } : {}),
     [signsData, selection, offersGroupMode],
@@ -238,7 +243,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white flex flex-col items-center justify-center p-6">
-      <div className="max-w-md w-full bg-[#111] rounded-2xl shadow-2xl p-8 border border-white/10">
+      <div
+        className={`w-full bg-[#111] rounded-2xl shadow-2xl p-8 border border-white/10 ${
+          offersGroupMode && selection.group ? 'max-w-4xl' : 'max-w-md'
+        }`}
+      >
         <h1 className="text-3xl font-bold mb-6 text-center text-[#DAC477]">CanvaReel</h1>
 
         {/* Upload State */}
@@ -311,95 +320,108 @@ export default function Home() {
                     </label>
 
                     {selection.group && (
-                      <div className="ml-2 border-l border-white/10 pl-4 space-y-3">
-                        {groups.map((group, groupIndex) => {
-                          const count = group.indices.length;
-                          const estimate = GROUP_BASE_SECONDS + count * CARD_SECONDS;
-                          return (
-                            <div
-                              key={group.id}
-                              className="rounded-lg border border-white/10 bg-black/30 p-3 space-y-2"
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="text-xs font-bold text-[#DAC477]">
-                                  Group {groupIndex + 1}
-                                </p>
-                                <div className="flex items-center gap-3 text-[11px]">
-                                  <button
-                                    type="button"
-                                    onClick={() => selectAllInGroup(group.id)}
-                                    className="text-[#DAC477] hover:underline"
-                                  >
-                                    All
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => clearGroup(group.id)}
-                                    className="text-gray-500 hover:text-gray-300 hover:underline"
-                                  >
-                                    None
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeGroup(group.id)}
-                                    className="text-red-300/80 hover:text-red-200 hover:underline"
-                                  >
-                                    Remove
-                                  </button>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-[11px] text-gray-500">
+                          <span className="font-bold uppercase tracking-widest">
+                            Groups ({groups.length})
+                          </span>
+                          <span className="hidden sm:inline">Tap a sign to add or remove it</span>
+                        </div>
+
+                        {/* One column on mobile; on desktop the row count follows the item
+                            count (cards + the add card), so two items sit side by side and
+                            everything from three items up fills rows of three.
+                            `auto-rows-fr` keeps every row the same height, so a wrapped add
+                            card still matches the group cards. */}
+                        <div className={`grid auto-rows-fr grid-cols-1 gap-4 ${gridColsClass}`}>
+                          {groups.map((group, groupIndex) => {
+                            const count = group.indices.length;
+                            const estimate = GROUP_BASE_SECONDS + count * CARD_SECONDS;
+                            return (
+                              <div
+                                key={group.id}
+                                className="flex h-full flex-col gap-2 rounded-lg border border-white/10 bg-[#1a1a1a] p-3"
+                              >
+                                <div className="flex items-start justify-between gap-1">
+                                  <p className="text-xs font-bold text-[#DAC477]">
+                                    Group {groupIndex + 1}
+                                  </p>
+                                  <div className="flex items-center gap-2 text-[10px]">
+                                    <button
+                                      type="button"
+                                      onClick={() => selectAllInGroup(group.id)}
+                                      className="text-[#DAC477] hover:underline"
+                                    >
+                                      All
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => clearGroup(group.id)}
+                                      className="text-gray-500 hover:text-gray-300 hover:underline"
+                                    >
+                                      None
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeGroup(group.id)}
+                                      className="text-red-300/80 hover:text-red-200 hover:underline"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
 
-                              <p className="text-[11px] text-gray-400">
-                                {count} of {signsData.length} signs
-                                {count > 0 && ` · ≈ ${formatSeconds(estimate)} video`}
-                              </p>
-
-                              <div className="grid grid-cols-2 gap-x-3 gap-y-1 max-h-40 overflow-y-auto pr-1">
-                                {signsData.map((sign, index) => (
-                                  <label
-                                    key={`${group.id}-${index}`}
-                                    className="flex items-center gap-2 cursor-pointer text-sm py-0.5 select-none"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={group.indices.includes(index)}
-                                      onChange={() => toggleGroupSign(group.id, index)}
-                                      className="w-3.5 h-3.5 accent-[#DAC477] cursor-pointer"
-                                    />
-                                    <span className="text-gray-300 truncate">{sign.name}</span>
-                                  </label>
-                                ))}
-                              </div>
-
-                              {count < GROUP_MIN_SIGNS && (
-                                <p className="text-[11px] text-red-300/80">
-                                  Pick at least {GROUP_MIN_SIGNS} signs — a group of one is just a
-                                  single reel.
+                                <p className="text-[11px] text-gray-400">
+                                  {count} of {signsData.length} signs
+                                  {count > 0 && ` · ≈ ${formatSeconds(estimate)} video`}
                                 </p>
-                              )}
-                            </div>
-                          );
-                        })}
 
-                        <button
-                          type="button"
-                          onClick={addGroup}
-                          className="w-full text-xs border border-dashed border-white/20 rounded-lg py-2 text-[#DAC477] hover:border-[#DAC477] hover:bg-[#DAC477]/5 transition-colors"
-                        >
-                          + Add Another Group
-                        </button>
+                                <div className="scrollbar-slim grid grid-cols-1 gap-y-1 max-h-40 overflow-y-auto pr-1">
+                                  {signsData.map((sign, index) => (
+                                    <label
+                                      key={`${group.id}-${index}`}
+                                      className="flex items-center gap-2 cursor-pointer text-sm py-0.5 select-none"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={group.indices.includes(index)}
+                                        onChange={() => toggleGroupSign(group.id, index)}
+                                        className="w-3.5 h-3.5 accent-[#DAC477] cursor-pointer shrink-0"
+                                      />
+                                      <span className="text-gray-300 truncate">{sign.name}</span>
+                                    </label>
+                                  ))}
+                                </div>
 
-                        {groups.length === 0 && (
-                          <p className="text-[11px] text-gray-500 text-center">
-                            No groups configured yet.
-                          </p>
-                        )}
+                                {count < GROUP_MIN_SIGNS && (
+                                  <p className="mt-auto text-[11px] text-red-300/80">
+                                    Pick at least {GROUP_MIN_SIGNS} signs — a group of one is just a
+                                    single reel.
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {/* Always the last grid item, so it is always reachable */}
+                          <button
+                            type="button"
+                            onClick={addGroup}
+                            className="flex h-full min-h-[160px] flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-white/20 bg-black/20 px-3 py-6 text-center text-gray-400 transition-colors hover:border-[#DAC477] hover:bg-[#DAC477]/5 hover:text-[#DAC477]"
+                          >
+                            <span className="text-2xl leading-none">+</span>
+                            <span className="text-xs font-bold">Add Another Group</span>
+                            <span className="text-[10px] text-gray-500">
+                              {signsData.length} signs available
+                            </span>
+                          </button>
+                        </div>
 
                         {groups.some((group) => group.indices.length > 6) && (
                           <p className="text-[11px] text-amber-400/80 leading-snug">
-                            Heads up: memory is per video, not per batch — every card adds ~13s and
-                            ~200MB while that reel renders. Groups above ~6 signs can run out of
-                            memory.
+                            Heads up: a long reel takes a while — every card adds ~13s of video and
+                            more render time. Encoding runs in a background worker, so this tab
+                            stays responsive; keep it open until the batch finishes.
                           </p>
                         )}
                       </div>

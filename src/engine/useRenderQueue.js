@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { renderSign } from './renderSign';
+import { renderTask } from './renderEngine';
 import { saveVideoToDB, getAllVideosFromDB, deleteVideoFromDB } from '../utils/videoDB';
 import { requestNotifyPermission, notifySignDone, notifyComplete } from '../utils/notify';
 
@@ -106,8 +106,11 @@ export const useRenderStore = create((set, get) => ({
       set({ currentTaskIndex: i });
 
       try {
-        // A task always hands renderSign an array of signs (1 for single reels)
-        const video = await renderSign(
+        // One task == one MP4. renderTask sends it to the Web Worker + WebCodecs
+        // engine (keeping the UI thread free and the frame buffer off the main
+        // heap), and falls back to the main-thread renderer only if the worker
+        // cannot run. A task always carries an array of signs (1 for singles).
+        const video = await renderTask(
           task.data,
           (progressState) => {
             set({ progress: progressState });
