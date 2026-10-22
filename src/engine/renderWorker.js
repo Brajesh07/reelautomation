@@ -26,6 +26,7 @@ import { renderIntroFrame } from '../components/IntroFrame';
 import { renderOutroFrame } from '../components/OutroFrame';
 import { createZodiacSequenceTimeline } from '../components/ZodiacFrame';
 import { buildTaskMeta } from './taskMeta';
+import { FPS, HEIGHT, WIDTH, planFrames } from './renderConfig';
 import {
   buildIntroTimeline,
   buildOutroTimeline,
@@ -66,10 +67,8 @@ gsap.ticker.remove(gsap.updateRoot);
 const useWebCodecs = typeof VideoEncoder !== 'undefined';
 const ENCODER_ENGINE = useWebCodecs ? 'webcodecs' : 'jpeg';
 
-// ── Constants ──────────────────────────────────────────────────────────────────
-const FPS = 30;
-const WIDTH = 1080;
-const HEIGHT = 1920;
+// ── Output format — shared with the main-thread engine ────────────────────────
+// (WIDTH / HEIGHT / FPS plus the frame-count math live in renderConfig.js)
 
 const ZODIAC_NAMES = [
   'Aries',
@@ -442,14 +441,17 @@ async function renderTask({ signs, fontConfig = {}, date, groupNumber = null }, 
   outroTimeline.pause();
 
   // ── Derive actual frame counts from real timeline durations ───────────────
-  const introFrames = Math.ceil(introTimeline.totalDuration() * FPS);
-  const zodiacFrames = Math.ceil(zodiacTimeline.totalDuration() * FPS);
-  const outroFrames = Math.ceil(outroTimeline.totalDuration() * FPS);
-  const totalFrames = introFrames + zodiacFrames + outroFrames;
+  // Same helper the main-thread engine uses, so a task has the same length
+  // whichever engine renders it.
+  const introDuration = introTimeline.totalDuration();
+  const zodiacDuration = zodiacTimeline.totalDuration();
+  const outroDuration = outroTimeline.totalDuration();
+  const plan = planFrames([introDuration, zodiacDuration, outroDuration]);
+  const [introFrames, zodiacFrames, outroFrames] = plan.segments;
+  const totalFrames = plan.total;
 
   // Same diagnostic the main-thread engine prints, so the two can be compared
-  const totalDuration =
-    introTimeline.totalDuration() + zodiacTimeline.totalDuration() + outroTimeline.totalDuration();
+  const totalDuration = introDuration + zodiacDuration + outroDuration;
   console.log(
     `[renderWorker] ${signList.length} card(s) -> ${totalFrames} frames (${totalDuration.toFixed(2)}s)`,
   );

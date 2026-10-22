@@ -5,6 +5,7 @@ import { renderOutroFrame } from '../components/OutroFrame';
 import { createZodiacSequenceTimeline } from '../components/ZodiacFrame';
 import { formatDate } from '../utils/dateFormatter';
 import { buildTaskMeta } from './taskMeta';
+import { FPS, HEIGHT, WIDTH, planFrames } from './renderConfig';
 import {
   buildIntroTimeline,
   buildOutroTimeline,
@@ -125,8 +126,8 @@ export async function renderSign(signs, onProgress, options = {}) {
 
   // 2. Off-screen canvas
   const canvas = document.createElement('canvas');
-  canvas.width = 1080;
-  canvas.height = 1920;
+  canvas.width = WIDTH;
+  canvas.height = HEIGHT;
   const ctx = canvas.getContext('2d');
 
   // 3. Read font config
@@ -138,7 +139,6 @@ export async function renderSign(signs, onProgress, options = {}) {
     /* use defaults */
   }
 
-  const fps = 30;
   const dateStr = formatDate(new Date());
   const highlightedNames = signList.map((sign) => sign.name);
 
@@ -186,11 +186,12 @@ export async function renderSign(signs, onProgress, options = {}) {
     );
   };
 
-  // 5. Build GSAP timeline (paused)
+  // 5. Build GSAP timeline (paused) from the same segments the worker uses
   const tl = gsap.timeline({ paused: true });
 
   // --- Intro / Outro come from animUtils.js, the same code the worker runs ---
-  tl.add(buildIntroTimeline(introAnimState, signList, dateStr, updateIntro));
+  const introTL = buildIntroTimeline(introAnimState, signList, dateStr, updateIntro);
+  tl.add(introTL);
 
   // --- Zodiac section: 1 card for a single reel, N cards for a group reel ---
   const zodiacTL = createZodiacSequenceTimeline(
@@ -204,17 +205,22 @@ export async function renderSign(signs, onProgress, options = {}) {
   );
   tl.add(zodiacTL);
 
-  tl.add(buildOutroTimeline(outroAnimState, updateOutro));
+  const outroTL = buildOutroTimeline(outroAnimState, updateOutro);
+  tl.add(outroTL);
 
   // The frame renderers save/restore their own alpha; this is only a safety net
   tl.add(() => {
     ctx.globalAlpha = 1;
   });
 
-  // 6. Derive total frames from actual timeline duration
-  //    (scales automatically with the number of cards in the reel)
+  // 6. Derive total frames from actual timeline durations, with the shared
+  //    per-segment rounding so both engines produce the same reel length
   const totalDuration = tl.totalDuration();
-  const totalFrames = Math.ceil(totalDuration * fps);
+  const totalFrames = planFrames([
+    introTL.totalDuration(),
+    zodiacTL.totalDuration(),
+    outroTL.totalDuration(),
+  ]).total;
   console.log(
     `[renderSign] ${signList.length} card(s) -> ${totalFrames} frames (${totalDuration.toFixed(2)}s)`,
   );
@@ -229,7 +235,7 @@ export async function renderSign(signs, onProgress, options = {}) {
       percent: Math.round((frameIndex / totalFrames) * 100),
     });
 
-    tl.seek(frameIndex / fps, false); // false = don't suppress events → onUpdate fires
+    tl.seek(frameIndex / FPS, false); // false = don't suppress events → onUpdate fires
 
     // Kick off async JPEG compression immediately — canvas pixels captured at call-time
     const blobPromise = new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
@@ -255,7 +261,7 @@ export async function renderSign(signs, onProgress, options = {}) {
 
   await ffmpeg.exec([
     '-framerate',
-    '30',
+    String(FPS),
     '-i',
     'frame%05d.jpg', // JPEG sequence input
     '-c:v',

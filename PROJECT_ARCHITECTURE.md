@@ -361,6 +361,7 @@ reelautomation/                      # repo root (Vite project, no src-level nes
 │   │   ├── renderWorker.js          # module worker: OffscreenCanvas + WebCodecs → FFmpeg mux  (715 L)
 │   │   ├── renderSign.js            # main-thread fallback: GSAP timeline → JPEG frames → libx264  (419 L)
 │   │   ├── animUtils.js             # THE intro/outro GSAP timelines, shared by both engines  (200 L)
+│   │   ├── renderConfig.js          # WIDTH / HEIGHT / FPS + planFrames(), shared by both engines  (47 L)
 │   │   └── taskMeta.js              # shared label/filename + intro sign-list helpers  (48 L)
 │   ├── components/                  # ── canvas renderers + shell ──
 │   │   ├── IntroFrame.js            # renderIntroFrame: 12-icon ring + 5 typewriter lines  (135 L)
@@ -401,6 +402,7 @@ reelautomation/                      # repo root (Vite project, no src-level nes
 | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Colors / branding of the video                                  | `#DAC477` and `#000` literals in `IntroFrame.js`, `ZodiacFrame.js`, `OutroFrame.js`                                   |
 | Video length or animation beats                                 | `src/engine/animUtils.js` (intro/outro tweens) and `createZodiacTimeline` in `ZodiacFrame.js` (cards)                 |
+| Output resolution / frame rate                                  | `WIDTH`, `HEIGHT`, `FPS` in `src/engine/renderConfig.js` (both engines and their FFmpeg calls read them)              |
 | Which engine renders a task                                     | `renderTask()` in `renderEngine.js`; force the fallback with `disposeRenderWorker()` or by removing the worker branch |
 | How many cards a group reel holds / when the mode picker shows  | `GROUP_OPTIONS_THRESHOLD` + `GROUP_MIN_SIGNS` in `Home.jsx`, `buildRenderTasks` in `useRenderQueue.js`                |
 | How the group grid lays out                                     | `gridItemCount` + `gridColsClass` and the `auto-rows-fr` grid container in `Home.jsx`                                 |
@@ -464,11 +466,12 @@ Bottom line for a new contributor: **you can run and ship this with zero credent
 | Production bundle                                                                                                                                | ✅ `yarn build` emits `dist/assets/renderWorker-*.js`; the built app served by `yarn preview` rendered a group reel on the `webcodecs` track with no console errors.                                                                                                                                                                                  |
 | Engine parity, same 2-sign task (after extracting `animUtils.js`)                                                                                | ✅ Worker and fallback both build 1350 frames / 45.00 s; both outputs are exactly 45.000 s, 1080×1920.                                                                                                                                                                                                                                                |
 | Frame parity, 16 timestamps across that 45 s                                                                                                     | ✅ Mean absolute pixel difference ≤ 1.0/255 (avg 0.46) at t = 1 … 44 s, including the typewriter and fade moments; bright-pixel coverage matches to 0.01 %, i.e. the difference is H.264 encoder noise, not animation drift.                                                                                                                          |
+| Frame math after moving it to `renderConfig.js`                                                                                                  | ✅ Worker and fallback still agree: both 1350 frames / 45.000 s for the 2-sign task, 1080×1920; `yarn build` and `yarn type-check` pass.                                                                                                                                                                                                              |
 | 12-sign worker reel after the refactor                                                                                                           | ✅ Byte-identical to the pre-refactor run: 34 229 361 bytes, 175.37 s, 1080×1920.                                                                                                                                                                                                                                                                     |
 
 ### 6.3 What is frozen vs fluid
 
-- **Stable / contractual:** the JSON contract, the seek-based deterministic loop, the intro/outro timeline shape in `animUtils.js` (both engines depend on it, and the reel length is derived from it), the `{ type, data[], label, groupNumber? }` task shape, `buildRenderTasks` ordering (singles first, then groups in the order they were added), the `GroupReel_<groupNo>_<N>Signs_<date>.mp4` filename convention, IndexedDB keys, `fontConfig` keys, route paths, brand colors and the 1080×1920 / 30 fps output.
+- **Stable / contractual:** the JSON contract, the seek-based deterministic loop, the intro/outro timeline shape in `animUtils.js` (both engines depend on it, and the reel length is derived from it), `renderConfig.js` (`WIDTH` = 1080, `HEIGHT` = 1920, `FPS` = 30, per-segment frame rounding), the `{ type, data[], label, groupNumber? }` task shape, `buildRenderTasks` ordering (singles first, then groups in the order they were added), the `GroupReel_<groupNo>_<N>Signs_<date>.mp4` filename convention, IndexedDB keys, `fontConfig` keys, route paths and brand colors.
 - **Fluid / experimental:** worker encode settings (codec string, bitrate, keyframe interval, when to abandon the WebCodecs track), segment durations, Preview pages, all UI styling.
 
 ### 6.4 Code and repo hygiene issues (real, current)
@@ -499,7 +502,7 @@ Bottom line for a new contributor: **you can run and ship this with zero credent
 
 ### 6.6 Highest-leverage next steps (for whoever picks this up)
 
-1. **Share the frame math too.** `WIDTH`/`HEIGHT`/`FPS` and the “frames = ceil(duration × fps)” derivation still live in both engines; only the tweens are shared. A single `framePlan()` helper would make a frame-count disagreement impossible.
+1. **Test the parity instead of measuring it by hand.** The two engines agree (same `animUtils.js` tweens, same `renderConfig.planFrames()`), but nothing asserts it: a script that renders one task with each engine and compares frame count + duration would catch a future drift before it ships.
 2. **Add retry** for failed tasks (failures are already collected in `errors`; a "retry failed" action would avoid re-rendering a whole batch).
 3. **Persist the uploaded dataset** (IndexedDB/localStorage) so `/design` and `/frame-preview` preview the batch that was actually uploaded, not `data.json`.
 4. **Delete or archive** `SingleZodiacFrame.js`, the stale `scripts/`, the duplicate lockfile, and `DraftFrame.js` (point `DesignPreview` at `renderZodiacFrame` so the lab matches the renderer).
